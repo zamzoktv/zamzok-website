@@ -48,10 +48,17 @@
    <div class="zamzok-player">
   <h2>▶ ZAMZOK PLAYER</h2>
   <p>شاهد أحدث فيديوهات ZAMZOK</p>
+     <div class="video-player" id="zamzokVideo" style="display:none;">
+  <iframe
+    src="https://www.youtube-nocookie.com/embed/DtvJ6GdDZaI?autoplay=1"
+    title="ZAMZOK Video"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+    style="width:100%; aspect-ratio:9/16; border:0; border-radius:15px;">
+  </iframe>
+     </div>
   <div class="video-grid" id="videoGrid">
-  <a class="video-card" href="https://youtube.com/shorts/DtvJ6GdDZaI" target="_blank" rel="noopener">
-    <img src="https://img.youtube.com/vi/DtvJ6GdDZaI/hqdefault.jpg" alt="ZAMZOK Short">
-    <div class="video-info">
+<div class="video-card" onclick="document.getElementById('zamzokVideo').style.display='block'; this.style.display='none';">
       <span class="category">SHORTS</span>
       <h3>شاهد الفيديو</h3>
     </div>
