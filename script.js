@@ -11,3 +11,5 @@ nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
   toggle.textContent = '☰';
 }));
 document.getElementById('year').textContent = new Date().getFullYear();
+nav.classList.remove('open');
+toggle.setAttribute('aria-expanded', 'false');
