@@ -67,7 +67,7 @@ async function loadZamzokVideos() {
     if (!videos.length) {
       section.innerHTML = '<p>مفيش فيديوهات متاحة حاليًا.</p>';
     }
-  } catch (error) {
+  section.innerHTML = 'خطأ: ' + error.message;
     section.innerHTML = '<p>تعذر تحميل الفيديوهات. راجع إعدادات YouTube API.</p>';
     console.error(error);
   }
