@@ -1,19 +1,27 @@
 /* ==================================================
    ZAMZOK WEBSITE — COMPLETE STYLES.CSS
-   Black & Gold Identity + Responsive Reels Interface
+   Black & Gold Identity + Responsive Reels
 ================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@500;700;800;900&display=swap');
 
+/* ==================================================
+   1. VARIABLES & RESET
+================================================== */
+
 :root {
   --bg: #090711;
   --panel: #12101d;
+  --panel-light: #191426;
   --gold: #ffcf55;
   --gold2: #ff9e25;
   --purple: #a855f7;
   --blue: #26b8ff;
   --text: #fff9ed;
   --muted: #b6b0c6;
+  --border: rgba(255, 207, 85, .18);
+  --radius: 16px;
+  --transition: .25s ease;
 }
 
 * {
@@ -22,15 +30,22 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 85px;
+  scroll-padding-top: 90px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
   background: var(--bg);
   color: var(--text);
   font-family: 'Cairo', sans-serif;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  max-width: 100%;
 }
 
 a {
@@ -42,13 +57,29 @@ button {
   font: inherit;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
-/* Background Effects */
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  color: #160e02;
+  background: var(--gold);
+}
+
+/* ==================================================
+   2. BACKGROUND EFFECTS
+================================================== */
 
 .ambient {
   position: fixed;
@@ -73,7 +104,9 @@ a:focus-visible {
   left: -180px;
 }
 
-/* Header */
+/* ==================================================
+   3. HEADER
+================================================== */
 
 .site-header {
   min-height: 82px;
@@ -84,20 +117,21 @@ a:focus-visible {
   gap: 22px;
   position: sticky;
   top: 0;
-  z-index: 20;
-  background: rgba(9, 7, 17, .92);
+  z-index: 100;
+  background: rgba(9, 7, 17, .94);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(255, 207, 85, .17);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+  color: var(--gold);
   font: 900 23px 'Orbitron', sans-serif;
   letter-spacing: 1px;
-  color: var(--gold);
-  flex-shrink: 0;
 }
 
 .brand img {
@@ -106,6 +140,7 @@ a:focus-visible {
   object-fit: cover;
   border-radius: 50%;
   border: 1px solid rgba(255, 207, 85, .7);
+  box-shadow: 0 0 20px rgba(255, 207, 85, .08);
 }
 
 nav {
@@ -115,36 +150,45 @@ nav {
 }
 
 nav a {
-  font-size: 14px;
   color: #ded9e9;
-  transition: color .2s;
+  font-size: 14px;
+  transition: color var(--transition);
 }
 
-nav a:hover {
+nav a:hover,
+nav a:focus-visible {
   color: var(--gold);
 }
 
 .header-subscribe {
-  font-size: 13px;
-  font-weight: 800;
+  flex-shrink: 0;
   padding: 11px 17px;
   border-radius: 9px;
   color: #160e02;
   background: linear-gradient(120deg, #ffe78c, #ffad2e);
   box-shadow: 0 0 24px #ffbd3b20;
-  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.header-subscribe:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px #ffbd3b30;
 }
 
 .menu-toggle {
   display: none;
-  background: none;
+  background: transparent;
   border: 0;
   color: white;
   font-size: 26px;
   cursor: pointer;
 }
 
-/* Hero Section */
+/* ==================================================
+   4. HERO SECTION
+================================================== */
 
 .hero {
   min-height: 570px;
@@ -160,10 +204,11 @@ nav a:hover {
 .hero-shade {
   position: absolute;
   inset: 0;
-  z-index: -2;
+  pointer-events: none;
 }
 
 .hero-art {
+  z-index: -2;
   background: url('zamzok-banner.png') center / cover no-repeat;
 }
 
@@ -201,24 +246,25 @@ nav a:hover {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  background: #171020bd;
-  border: 1px solid #ffcf5540;
   padding: 8px 13px;
+  border: 1px solid #ffcf5540;
   border-radius: 30px;
+  background: #171020bd;
 }
 
 .pulse {
   width: 7px;
   height: 7px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: #75ffb3;
   box-shadow: 0 0 12px #75ffb3;
 }
 
 h1 {
+  margin: 22px 0 15px;
   font-size: clamp(40px, 5.2vw, 70px);
   line-height: 1.2;
-  margin: 22px 0 15px;
   font-weight: 900;
 }
 
@@ -232,16 +278,16 @@ h1 span,
 }
 
 .hero-content > p {
+  max-width: 540px;
   color: #e0d9e9;
   font-size: 16px;
   line-height: 2;
-  max-width: 540px;
 }
 
 .hero-actions {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 12px;
   margin-top: 28px;
 }
 
@@ -252,9 +298,9 @@ h1 span,
   gap: 10px;
   padding: 13px 20px;
   border-radius: 10px;
-  font-weight: 800;
   font-size: 14px;
-  transition: transform .2s, box-shadow .2s;
+  font-weight: 800;
+  transition: transform var(--transition), box-shadow var(--transition);
 }
 
 .btn:hover {
@@ -262,25 +308,35 @@ h1 span,
 }
 
 .btn-gold {
-  background: linear-gradient(120deg, #ffe58b, #ffad2c);
   color: #1c1100;
+  background: linear-gradient(120deg, #ffe58b, #ffad2c);
   box-shadow: 0 8px 28px #ffb32c22;
+}
+
+.btn-gold:hover {
+  box-shadow: 0 10px 32px #ffb32c38;
 }
 
 .btn-glass,
 .btn-tiktok {
+  color: white;
   border: 1px solid #ffffff30;
   background: #ffffff0b;
-  color: white;
+}
+
+.btn-glass:hover,
+.btn-tiktok:hover {
+  border-color: #ffcf5570;
+  background: #ffffff12;
 }
 
 .hero-tags {
   display: flex;
-  gap: 20px;
   flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 24px;
   color: #c7bfd5;
   font-size: 12px;
-  margin-top: 24px;
 }
 
 .hero-stamp {
@@ -289,31 +345,34 @@ h1 span,
   bottom: 65px;
   width: 110px;
   height: 110px;
-  border: 1px solid #ffcf5570;
-  border-radius: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transform: rotate(-12deg);
+  border: 1px solid #ffcf5570;
+  border-radius: 50%;
   background: #0a0716b8;
   box-shadow: 0 0 40px #b34bff24;
+  transform: rotate(-12deg);
+  pointer-events: none;
 }
 
 .hero-stamp span {
-  font: 900 30px 'Orbitron', sans-serif;
   color: var(--gold);
+  font: 900 30px 'Orbitron', sans-serif;
 }
 
 .hero-stamp small {
+  color: #c6b5ff;
   text-align: center;
   font: 700 8px 'Orbitron', sans-serif;
   letter-spacing: 1px;
-  color: #c6b5ff;
   line-height: 1.5;
 }
 
-/* General Sections */
+/* ==================================================
+   5. GENERAL SECTIONS
+================================================== */
 
 .section {
   padding: 75px 7%;
@@ -321,30 +380,33 @@ h1 span,
 
 .section-heading {
   display: flex;
-  justify-content: space-between;
   align-items: end;
+  justify-content: space-between;
   gap: 20px;
   margin-bottom: 28px;
 }
 
 .section-heading h2,
 .join-section h2 {
-  font-size: clamp(27px, 3vw, 39px);
   margin: 7px 0 0;
+  font-size: clamp(27px, 3vw, 39px);
   font-weight: 900;
 }
 
 .text-link {
-  font-size: 13px;
   color: var(--gold);
+  font-size: 13px;
   white-space: nowrap;
+  transition: color var(--transition);
 }
 
 .text-link:hover {
   color: #fff0a6;
 }
 
-/* Video Grid */
+/* ==================================================
+   6. VIDEO SECTION
+================================================== */
 
 .zamzok-player {
   padding: 25px;
@@ -369,21 +431,64 @@ h1 span,
   line-height: 1.9;
 }
 
+/* Playlist controls are also created by script.js */
+
+.zamzok-playlist-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.zamzok-playlist-btn {
+  padding: 11px 16px;
+  border: 1px solid #ffcf5540;
+  border-radius: 12px;
+  background: #171020;
+  color: var(--text);
+  font-family: 'Cairo', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    color var(--transition),
+    border-color var(--transition),
+    background var(--transition),
+    transform var(--transition);
+}
+
+.zamzok-playlist-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+}
+
+.zamzok-playlist-btn.is-active {
+  border-color: var(--gold);
+  background: linear-gradient(120deg, #ffe78c, #ffad2e);
+  color: #160e02;
+  box-shadow: 0 5px 20px #ffbd3b18;
+}
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
   align-items: start;
+  gap: 20px;
 }
 
 .video-card,
 .zamzok-video-card {
   min-width: 0;
   overflow: hidden;
-  background: linear-gradient(145deg, #171323, #100e19);
   border: 1px solid #ffffff12;
   border-radius: 16px;
-  transition: transform .25s, border-color .25s, box-shadow .25s;
+  background: linear-gradient(145deg, #171323, #100e19);
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .video-card:hover,
@@ -397,17 +502,19 @@ h1 span,
   position: relative;
   display: block;
   width: 100%;
+  padding: 0;
   overflow: hidden;
-  text-align: right;
-  cursor: pointer;
+  border: 0;
   background: #090711;
   color: white;
+  text-align: right;
+  cursor: pointer;
 }
 
 .zamzok-video-button img {
   display: block;
   width: 100%;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   background: #171323;
   transition: transform .35s, filter .35s;
@@ -418,13 +525,14 @@ h1 span,
   filter: brightness(1.08);
 }
 
-.zamzok-video-button span {
+.zamzok-video-button > span {
   display: block;
-  padding: 12px;
-  text-align: center;
-  color: var(--gold);
-  background: linear-gradient(90deg, #171020, #21132c);
+  padding: 11px;
   border-top: 1px solid #ffcf5530;
+  background: linear-gradient(90deg, #171020, #21132c);
+  color: var(--gold);
+  text-align: center;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -433,27 +541,31 @@ h1 span,
 }
 
 .video-info h3 {
-  font-size: 15px;
-  line-height: 1.9;
   margin: 0;
   color: var(--text);
+  font-size: 15px;
+  line-height: 1.9;
   overflow-wrap: anywhere;
 }
 
-.video-grid > p {
+.video-grid > p,
+.zamzok-message {
   grid-column: 1 / -1;
-  text-align: center;
+  width: 100%;
+  padding: 24px;
   color: var(--gold);
+  text-align: center;
   line-height: 2;
-  padding: 20px;
 }
 
-/* Worlds */
+/* ==================================================
+   7. WORLDS / CATEGORIES
+================================================== */
 
 .worlds-section {
-  background: linear-gradient(180deg, #0e0b18, #100b1a 50%, #090711);
   border-top: 1px solid #ffffff0b;
   border-bottom: 1px solid #ffffff0b;
+  background: linear-gradient(180deg, #0e0b18, #100b1a 50%, #090711);
 }
 
 .section-inner {
@@ -475,25 +587,28 @@ h1 span,
 
 .world {
   position: relative;
+  min-width: 0;
   min-height: 210px;
-  padding: 22px 20px;
-  border-radius: 15px;
-  border: 1px solid #ffffff19;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-end;
+  padding: 22px 20px;
+  overflow: hidden;
+  border: 1px solid #ffffff19;
+  border-radius: 15px;
   background: #15101f;
-  transition: transform .25s, border-color .25s;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition);
 }
 
-.world:before {
-  content: "";
+.world::before {
   position: absolute;
   inset: 0;
+  content: "";
   opacity: .7;
   transition: opacity .3s;
+  pointer-events: none;
 }
 
 .world:hover {
@@ -501,40 +616,49 @@ h1 span,
   border-color: #ffcf5570;
 }
 
-.world:hover:before {
+.world:hover::before {
   opacity: 1;
 }
 
-.world-comedy:before {
-  background: radial-gradient(circle at 80% 10%, #ff9a2c66, transparent 55%), linear-gradient(140deg, transparent, #5b197e55);
+.world-comedy::before {
+  background:
+    radial-gradient(circle at 80% 10%, #ff9a2c66, transparent 55%),
+    linear-gradient(140deg, transparent, #5b197e55);
 }
 
-.world-adventure:before {
-  background: radial-gradient(circle at 80% 10%, #e5a12d70, transparent 55%), linear-gradient(140deg, transparent, #174c7a66);
+.world-adventure::before {
+  background:
+    radial-gradient(circle at 80% 10%, #e5a12d70, transparent 55%),
+    linear-gradient(140deg, transparent, #174c7a66);
 }
 
-.world-horror:before {
-  background: radial-gradient(circle at 80% 10%, #a82dff66, transparent 55%), linear-gradient(140deg, transparent, #0a183d);
+.world-horror::before {
+  background:
+    radial-gradient(circle at 80% 10%, #a82dff66, transparent 55%),
+    linear-gradient(140deg, transparent, #0a183d);
 }
 
-.world-stories:before {
-  background: radial-gradient(circle at 80% 10%, #1fbcff66, transparent 55%), linear-gradient(140deg, transparent, #44216a);
+.world-stories::before {
+  background:
+    radial-gradient(circle at 80% 10%, #1fbcff66, transparent 55%),
+    linear-gradient(140deg, transparent, #44216a);
 }
 
 .world > * {
   position: relative;
+  z-index: 1;
 }
 
 .world-symbol {
-  font-size: 29px;
   margin-bottom: auto;
+  font-size: 29px;
 }
 
 .world-en {
+  margin-bottom: 6px;
+  color: var(--gold);
   font: 700 9px 'Orbitron', sans-serif;
   letter-spacing: 1.5px;
-  color: var(--gold);
-  margin-bottom: 6px;
 }
 
 .world strong {
@@ -542,9 +666,9 @@ h1 span,
 }
 
 .world small {
-  font-size: 12px;
-  color: #c5bdd2;
   margin-top: 4px;
+  color: #c5bdd2;
+  font-size: 12px;
 }
 
 .world i {
@@ -555,17 +679,19 @@ h1 span,
   font-style: normal;
 }
 
-/* Subscribe Section */
+/* ==================================================
+   8. SUBSCRIBE SECTION
+================================================== */
 
 .join-section {
+  display: flex;
+  align-items: center;
+  gap: 25px;
   margin: 65px 7%;
   padding: 28px 35px;
   border: 1px solid #ffcf5533;
   border-radius: 20px;
   background: linear-gradient(110deg, #171021, #11101d 55%, #15102a);
-  display: flex;
-  align-items: center;
-  gap: 25px;
 }
 
 .join-logo img {
@@ -581,39 +707,41 @@ h1 span,
 }
 
 .join-section p {
-  font-size: 13px;
-  color: var(--muted);
   margin-bottom: 0;
+  color: var(--muted);
+  font-size: 13px;
   line-height: 1.9;
 }
 
 .join-actions {
-  margin-right: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-width: 200px;
+  margin-right: auto;
 }
 
 .btn-tiktok {
-  font-size: 13px;
   padding: 11px 15px;
+  font-size: 13px;
 }
 
-/* Footer */
+/* ==================================================
+   9. FOOTER
+================================================== */
 
 footer {
-  padding: 26px 7%;
   display: flex;
   align-items: center;
   gap: 18px;
+  padding: 26px 7%;
   border-top: 1px solid #ffffff12;
   color: #8e879e;
 }
 
 footer .footer-brand {
-  font: 900 17px 'Orbitron', sans-serif;
   color: var(--gold);
+  font: 900 17px 'Orbitron', sans-serif;
 }
 
 footer > span {
@@ -627,7 +755,7 @@ footer small {
 }
 
 /* ==================================================
-   ZAMZOK REELS — FULLSCREEN INTERFACE
+   10. REELS OVERLAY
 ================================================== */
 
 body.zamzok-reels-active {
@@ -636,32 +764,31 @@ body.zamzok-reels-active {
 }
 
 .zamzok-reels-overlay {
-  display: none;
   position: fixed;
   inset: 0;
   z-index: 99999;
+  display: none;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   height: 100dvh;
-  background: #050407;
-  color: #fff;
   overflow: hidden;
   isolation: isolate;
+  background: #050407;
+  color: #fff;
   font-family: 'Cairo', sans-serif;
-  touch-action: pan-y;
 }
 
 .zamzok-reels-overlay.is-open {
   display: flex;
-  flex-direction: column;
 }
 
 .zamzok-reels-header {
   position: absolute;
-  z-index: 10;
   top: 0;
   right: 0;
   left: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -678,10 +805,10 @@ body.zamzok-reels-active {
   display: flex;
   align-items: center;
   gap: 9px;
+  color: var(--gold);
   font-family: 'Orbitron', sans-serif;
   font-size: 14px;
   font-weight: 900;
-  color: var(--gold);
 }
 
 .zamzok-reels-brand small {
@@ -707,12 +834,20 @@ body.zamzok-reels-active {
   flex-shrink: 0;
   width: 42px;
   height: 42px;
+  padding: 0;
   border: 1px solid #ffffff35;
   border-radius: 50%;
-  background: #090711b8;
+  background: #090711d9;
   color: #fff;
   font-size: 23px;
   cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.zamzok-reels-close:hover,
+.zamzok-reels-fullscreen:hover {
+  border-color: var(--gold);
+  background: #20152b;
 }
 
 .zamzok-reels-fullscreen {
@@ -722,14 +857,13 @@ body.zamzok-reels-active {
 
 .zamzok-reels-stage {
   position: relative;
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
+  min-height: 0;
   overflow: hidden;
   background: #050407;
-  touch-action: pan-y;
 }
 
 .zamzok-reels-video {
@@ -748,11 +882,13 @@ body.zamzok-reels-active {
   background: #000;
 }
 
+/* Reel actions */
+
 .zamzok-reels-actions {
   position: absolute;
-  z-index: 5;
   right: max(12px, env(safe-area-inset-right));
   bottom: 125px;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -767,16 +903,16 @@ body.zamzok-reels-active {
   justify-content: center;
   gap: 4px;
   min-width: 48px;
-  border: 0;
   padding: 0;
+  border: 0;
   background: transparent;
   color: #fff;
   text-decoration: none;
   font-family: 'Cairo', sans-serif;
   font-size: 11px;
   font-weight: 700;
-  cursor: pointer;
   text-shadow: 0 1px 5px #000;
+  cursor: pointer;
 }
 
 .zamzok-reels-action-icon {
@@ -786,11 +922,15 @@ body.zamzok-reels-active {
   height: 46px;
   border: 1px solid #ffffff55;
   border-radius: 50%;
-  background: #090711b8;
+  background: #090711d9;
   color: #fff;
   font-family: Arial, sans-serif;
   font-size: 28px;
-  transition: transform .2s, color .2s;
+  transition: transform .2s, color .2s, border-color .2s;
+}
+
+.zamzok-reels-action:hover .zamzok-reels-action-icon {
+  border-color: var(--gold);
 }
 
 .zamzok-reels-action:active .zamzok-reels-action-icon {
@@ -825,12 +965,14 @@ body.zamzok-reels-active {
   font-weight: 900;
 }
 
+/* Reel title and account */
+
 .zamzok-reels-bottom {
   position: absolute;
-  z-index: 4;
   right: 16px;
-  left: 85px;
   bottom: max(25px, env(safe-area-inset-bottom));
+  left: 85px;
+  z-index: 4;
   padding: 12px 0;
   pointer-events: none;
   text-shadow: 0 2px 7px #000;
@@ -869,24 +1011,33 @@ body.zamzok-reels-active {
   font-size: 11px;
 }
 
+/* Previous / next controls */
+
 .zamzok-reels-nav {
   position: absolute;
-  z-index: 7;
   left: 12px;
+  z-index: 7;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 42px;
+  width: 40px;
+  height: 44px;
+  padding: 0;
   border: 1px solid #ffffff45;
   border-radius: 24px;
-  background: #0009;
+  background: #000b;
   color: var(--gold);
   font-size: 27px;
   cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+}
+
+.zamzok-reels-nav:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: #21162b;
 }
 
 .zamzok-reels-prev {
-  top: 44%;
+  top: 43%;
 }
 
 .zamzok-reels-next {
@@ -894,15 +1045,15 @@ body.zamzok-reels-active {
 }
 
 .zamzok-reels-nav:disabled {
-  opacity: .25;
-  cursor: default;
+  opacity: .28;
+  cursor: not-allowed;
 }
 
 .zamzok-reels-counter {
   position: absolute;
-  z-index: 10;
-  top: 65px;
+  top: 68px;
   left: 16px;
+  z-index: 10;
   color: var(--gold);
   font-family: 'Orbitron', sans-serif;
   font-size: 11px;
@@ -917,7 +1068,9 @@ body.zamzok-reels-active {
   background: #000;
 }
 
-/* Tablet */
+/* ==================================================
+   11. TABLET
+================================================== */
 
 @media (max-width: 900px) {
   .site-header {
@@ -938,8 +1091,8 @@ body.zamzok-reels-active {
   }
 
   .hero {
-    padding: 65px 6%;
     min-height: 540px;
+    padding: 65px 6%;
   }
 
   .hero-stamp {
@@ -948,8 +1101,8 @@ body.zamzok-reels-active {
   }
 
   .section {
-    padding-left: 5%;
     padding-right: 5%;
+    padding-left: 5%;
   }
 
   .zamzok-player {
@@ -966,40 +1119,49 @@ body.zamzok-reels-active {
   }
 
   .join-section {
+    flex-wrap: wrap;
     margin: 45px 5%;
     padding: 25px;
-    flex-wrap: wrap;
   }
 
   .join-actions {
-    margin-right: 0;
     flex-direction: row;
     flex-wrap: wrap;
+    margin-right: 0;
   }
 }
 
-/* Mobile */
+/* ==================================================
+   12. MOBILE
+================================================== */
 
 @media (max-width: 650px) {
+  html {
+    scroll-padding-top: 72px;
+  }
+
   .site-header {
     min-height: 70px;
     gap: 10px;
+    padding-right: 4%;
+    padding-left: 4%;
   }
 
   .menu-toggle {
     display: block;
     order: 3;
+    padding: 5px;
   }
 
   .header-subscribe {
-    font-size: 11px;
-    padding: 9px 10px;
     margin-right: auto;
+    padding: 9px 10px;
+    font-size: 11px;
   }
 
   .brand {
-    font-size: 17px;
     gap: 6px;
+    font-size: 17px;
   }
 
   .brand img {
@@ -1008,17 +1170,17 @@ body.zamzok-reels-active {
   }
 
   nav {
-    display: none;
     position: absolute;
     top: 69px;
     right: 0;
     left: 0;
-    padding: 15px 5%;
-    background: #0e0b18;
-    border-bottom: 1px solid #ffffff18;
-    flex-direction: column;
+    display: none;
     align-items: stretch;
+    flex-direction: column;
     gap: 0;
+    padding: 15px 5%;
+    border-bottom: 1px solid #ffffff18;
+    background: #0e0b18;
   }
 
   nav.open {
@@ -1062,11 +1224,11 @@ body.zamzok-reels-active {
   }
 
   .hero-stamp {
-    width: 75px;
-    height: 75px;
     top: 25px;
     bottom: auto;
     left: 6%;
+    width: 75px;
+    height: 75px;
   }
 
   .hero-stamp span {
@@ -1109,9 +1271,26 @@ body.zamzok-reels-active {
     font-size: 12px;
   }
 
+  .zamzok-playlist-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .zamzok-playlist-btn {
+    min-width: 0;
+    padding: 10px 7px;
+    font-size: 12px;
+  }
+
   .video-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .video-card,
+  .zamzok-video-card {
+    border-radius: 12px;
   }
 
   .video-info {
@@ -1123,9 +1302,9 @@ body.zamzok-reels-active {
     line-height: 1.8;
   }
 
-  .zamzok-video-button span {
-    padding: 9px;
-    font-size: 12px;
+  .zamzok-video-button > span {
+    padding: 9px 5px;
+    font-size: 11px;
   }
 
   .world-grid {
@@ -1139,6 +1318,10 @@ body.zamzok-reels-active {
 
   .world strong {
     font-size: 16px;
+  }
+
+  .world small {
+    font-size: 11px;
   }
 
   .join-section {
@@ -1163,8 +1346,8 @@ body.zamzok-reels-active {
   }
 
   .join-actions {
-    grid-column: 1 / -1;
     display: grid;
+    grid-column: 1 / -1;
     grid-template-columns: 1fr;
   }
 
@@ -1187,17 +1370,27 @@ body.zamzok-reels-active {
     font-size: 8px;
   }
 
-  /* Reels mobile */
+  /* Reels on mobile */
 
   .zamzok-reels-video {
     width: 100%;
     height: 100%;
   }
 
+  .zamzok-reels-header {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+
+  .zamzok-reels-close,
+  .zamzok-reels-fullscreen {
+    width: 39px;
+    height: 39px;
+  }
+
   .zamzok-reels-actions {
-    right: max(9px, env(safe-area-inset-right));
-    bottom: 120px;
-    gap: 18px;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(115px, calc(env(safe-area-inset-bottom) + 100px));
+    gap: 17px;
   }
 
   .zamzok-reels-action-icon {
@@ -1213,36 +1406,51 @@ body.zamzok-reels-active {
 
   .zamzok-reels-bottom {
     right: 12px;
-    left: 67px;
-    bottom: max(20px, env(safe-area-inset-bottom));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 62px;
   }
 
   .zamzok-reels-title {
     font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .zamzok-reels-hint {
+    font-size: 10px;
   }
 
   .zamzok-reels-nav {
     left: 5px;
-    width: 30px;
+    width: 31px;
     height: 38px;
+    font-size: 23px;
   }
 
   .zamzok-reels-counter {
     top: 65px;
     left: 12px;
+    font-size: 10px;
   }
 }
 
-/* Small phones */
+/* ==================================================
+   13. SMALL PHONES
+================================================== */
 
 @media (max-width: 380px) {
   .brand {
-    font-size: 15px;
+    gap: 5px;
+    font-size: 14px;
+  }
+
+  .brand img {
+    width: 34px;
+    height: 34px;
   }
 
   .header-subscribe {
-    font-size: 10px;
     padding: 8px;
+    font-size: 10px;
   }
 
   .video-grid {
@@ -1257,11 +1465,114 @@ body.zamzok-reels-active {
     width: 100%;
   }
 
+  .zamzok-playlist-controls {
+    grid-template-columns: 1fr;
+  }
+
   .zamzok-reels-actions {
-    gap: 14px;
+    gap: 13px;
   }
 
   .zamzok-reels-action {
     font-size: 10px;
+  }
+
+  .zamzok-reels-action-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 23px;
+  }
+
+  .zamzok-reels-bottom {
+    left: 55px;
+  }
+}
+
+/* ==================================================
+   14. LANDSCAPE PHONES
+================================================== */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .zamzok-reels-header {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .zamzok-reels-close,
+  .zamzok-reels-fullscreen {
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
+  }
+
+  .zamzok-reels-brand-icon {
+    width: 29px;
+    height: 29px;
+  }
+
+  .zamzok-reels-actions {
+    right: 10px;
+    bottom: 55px;
+    gap: 8px;
+  }
+
+  .zamzok-reels-action-icon {
+    width: 33px;
+    height: 33px;
+    font-size: 21px;
+  }
+
+  .zamzok-reels-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .zamzok-reels-bottom {
+    right: 65px;
+    bottom: 5px;
+    left: 65px;
+    padding: 5px 0;
+  }
+
+  .zamzok-reels-title {
+    margin: 4px 0;
+    font-size: 12px;
+  }
+
+  .zamzok-reels-hint {
+    font-size: 9px;
+  }
+
+  .zamzok-reels-nav {
+    left: 8px;
+    width: 32px;
+    height: 36px;
+  }
+
+  .zamzok-reels-prev {
+    top: 35%;
+  }
+
+  .zamzok-reels-next {
+    top: 55%;
+  }
+
+  .zamzok-reels-counter {
+    top: 49px;
+  }
+}
+
+/* ==================================================
+   15. REDUCED MOTION
+================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
 }
