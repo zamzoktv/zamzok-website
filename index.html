@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090711">
-  <meta name="description" content="ZAMZOK — عالم من الكوميديا والمغامرات والرعب والقصص المصنوعة بالذكاء الاصطناعي.">
+
+  <meta
+    name="description"
+    content="ZAMZOK — عالم من الكوميديا والمغامرات والرعب والقصص المصنوعة بالذكاء الاصطناعي."
+  >
 
   <title>ZAMZOK | Expect the Unexpected</title>
 
@@ -16,6 +20,7 @@
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
 
+  <!-- Header -->
   <header class="site-header">
     <a class="brand" href="#home" aria-label="ZAMZOK الرئيسية">
       <img src="zamzok-logo.png" alt="شعار ZAMZOK">
@@ -27,6 +32,7 @@
       id="menuToggle"
       aria-label="فتح القائمة"
       aria-expanded="false"
+      aria-controls="mainNav"
       type="button"
     >☰</button>
 
@@ -46,7 +52,7 @@
   </header>
 
   <main>
-    <!-- القسم الرئيسي -->
+    <!-- Hero -->
     <section class="hero" id="home">
       <div
         class="hero-art"
@@ -94,7 +100,7 @@
       </div>
     </section>
 
-    <!-- قسم الفيديوهات -->
+    <!-- Videos -->
     <section class="section featured" id="videos">
       <div class="section-heading">
         <div>
@@ -104,7 +110,7 @@
 
         <a
           class="text-link"
-          href="https://www.youtube.com/@zamzoktv"
+          href="https://www.youtube.com/@zamzoktv/videos"
           target="_blank"
           rel="noopener noreferrer"
         >كل الفيديوهات على يوتيوب ↗</a>
@@ -112,19 +118,19 @@
 
       <div class="zamzok-player">
         <h2>▶ ZAMZOK PLAYER</h2>
-        <p>اختار الفيديو اللي تحب تشوفه، وشغّله داخل الموقع</p>
 
-        <!--
-          script.js سيضع فيديوهات القناة هنا تلقائيًا.
-          لا تضف بطاقات فيديو يدوية داخل هذا العنصر.
-        -->
-        <div class="video-grid" id="videoGrid">
+        <p>
+          اختار الفيديو اللي تحب تشوفه، وشغّله داخل الموقع
+        </p>
+
+        <!-- الفيديوهات تُحمّل تلقائيًا بواسطة script.js -->
+        <div class="video-grid" id="videoGrid" aria-live="polite">
           <p>جاري تحميل فيديوهات ZAMZOK...</p>
         </div>
       </div>
     </section>
 
-    <!-- قسم العوالم -->
+    <!-- Categories -->
     <section class="worlds-section" id="categories">
       <div class="section section-inner">
         <div class="section-heading centered">
@@ -170,7 +176,7 @@
       </div>
     </section>
 
-    <!-- قسم الاشتراك -->
+    <!-- About and Subscribe -->
     <section class="join-section" id="about">
       <div class="join-logo">
         <img src="zamzok-logo.png" alt="شعار ZAMZOK">
@@ -179,6 +185,7 @@
       <div>
         <span class="section-kicker">العالم يكبر بوجودك</span>
         <h2>لسه <span>البداية!</span></h2>
+
         <p>
           تابع ZAMZOK عشان تكون أول من يشوف المغامرات والقصص الجديدة.
         </p>
@@ -202,10 +209,12 @@
     </section>
   </main>
 
-  <!-- التذييل -->
+  <!-- Footer -->
   <footer>
     <a class="footer-brand" href="#home">ZAMZOK</a>
+
     <span>EXPECT THE UNEXPECTED</span>
+
     <small>
       © <span id="year"></span> ZAMZOK. جميع الحقوق محفوظة.
     </small>
