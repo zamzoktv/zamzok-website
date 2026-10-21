@@ -13,12 +13,12 @@ nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
 document.getElementById('year').textContent = new Date().getFullYear();
 nav.classList.remove('open');
 toggle.setAttribute('aria-expanded', 'false');
-const YOUTUBE_API_KEY = 'ضع_مفتاح_API_هنا';
+const YOUTUBE_API_KEY = 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo';
 const YOUTUBE_CHANNEL_ID = 'UCNulyIeVU-8sXQFDitaKiSg';
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
 
 async function loadZamzokVideos() {
-  const section = document.getElementById('zamzokVideos');
+  const section = document.getElementById('videoGrid');
   if (!section) return;
 
   try {
