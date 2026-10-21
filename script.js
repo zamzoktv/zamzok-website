@@ -10,7 +10,7 @@
 // ==================================================
 
 const ZAMZOK_CONFIG = {
-  apiKey: 'PUT_YOUR_NEW_API_KEY_HERE',
+  apiKey: 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo',
   channelId: 'UCNuIyleVU-8sXQFDitaKiSg',
   channelUrl: 'https://www.youtube.com/@zamzoktv',
   apiUrl: 'https://www.googleapis.com/youtube/v3',
