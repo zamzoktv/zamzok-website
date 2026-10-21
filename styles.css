@@ -1,6 +1,6 @@
 /* ==================================================
    ZAMZOK WEBSITE — COMPLETE STYLES.CSS
-   Black & Gold Identity + Responsive Reels
+   Black & Gold Identity + Responsive Reels + Swipe Support
 ================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@500;700;800;900&display=swap');
@@ -431,8 +431,6 @@ h1 span,
   line-height: 1.9;
 }
 
-/* Playlist controls are also created by script.js */
-
 .zamzok-playlist-controls {
   display: flex;
   flex-wrap: wrap;
@@ -788,7 +786,7 @@ body.zamzok-reels-active {
   top: 0;
   right: 0;
   left: 0;
-  z-index: 10;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -799,6 +797,12 @@ body.zamzok-reels-active {
     12px
     max(16px, env(safe-area-inset-left));
   background: linear-gradient(#000c, transparent);
+  pointer-events: none;
+}
+
+.zamzok-reels-header button,
+.zamzok-reels-header a {
+  pointer-events: auto;
 }
 
 .zamzok-reels-brand {
@@ -864,6 +868,8 @@ body.zamzok-reels-active {
   min-height: 0;
   overflow: hidden;
   background: #050407;
+  touch-action: pan-x;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .zamzok-reels-video {
@@ -872,6 +878,7 @@ body.zamzok-reels-active {
   height: 100%;
   overflow: hidden;
   background: #000;
+  isolation: isolate;
 }
 
 .zamzok-reels-video iframe {
@@ -882,17 +889,35 @@ body.zamzok-reels-active {
   background: #000;
 }
 
+/*
+   Swipe layer:
+   Keep it transparent and non-interactive so it does not block
+   YouTube playback controls or the reel action buttons.
+   Swipe detection must be handled by script.js.
+*/
+
+.zamzok-reels-swipe-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: transparent;
+  pointer-events: none !important;
+  touch-action: pan-x;
+}
+
 /* Reel actions */
 
 .zamzok-reels-actions {
   position: absolute;
   right: max(12px, env(safe-area-inset-right));
   bottom: 125px;
-  z-index: 5;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 22px;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .zamzok-reels-action {
@@ -972,7 +997,7 @@ body.zamzok-reels-active {
   right: 16px;
   bottom: max(25px, env(safe-area-inset-bottom));
   left: 85px;
-  z-index: 4;
+  z-index: 15;
   padding: 12px 0;
   pointer-events: none;
   text-shadow: 0 2px 7px #000;
@@ -1016,7 +1041,7 @@ body.zamzok-reels-active {
 .zamzok-reels-nav {
   position: absolute;
   left: 12px;
-  z-index: 7;
+  z-index: 25;
   display: grid;
   place-items: center;
   width: 40px;
@@ -1028,7 +1053,11 @@ body.zamzok-reels-active {
   color: var(--gold);
   font-size: 27px;
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+  touch-action: manipulation;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    opacity var(--transition);
 }
 
 .zamzok-reels-nav:hover:not(:disabled) {
@@ -1053,7 +1082,7 @@ body.zamzok-reels-active {
   position: absolute;
   top: 68px;
   left: 16px;
-  z-index: 10;
+  z-index: 30;
   color: var(--gold);
   font-family: 'Orbitron', sans-serif;
   font-size: 11px;
@@ -1563,7 +1592,29 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   15. REDUCED MOTION
+   15. TOUCH AND SWIPE SUPPORT
+================================================== */
+
+.zamzok-reels-video,
+.zamzok-reels-stage {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+  Important:
+  CSS cannot detect a vertical swipe by itself.
+  script.js must listen for touchstart/touchend or pointer events
+  and trigger the previous/next reel.
+*/
+
+.zamzok-reels-actions,
+.zamzok-reels-nav,
+.zamzok-reels-header {
+  touch-action: manipulation;
+}
+
+/* ==================================================
+   16. REDUCED MOTION
 ================================================== */
 
 @media (prefers-reduced-motion: reduce) {
