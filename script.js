@@ -1,1055 +1,707 @@
-```javascript
-'use strict';
-
-/* =========================================
-   ZAMZOK — CONFIGURATION
-========================================= */
-
-const ZAMZOK_CONFIG = {
-  // ضع مفتاح YouTube Data API v3 الحالي هنا.
-  // تنبيه: المفتاح الموجود في كود المتصفح يمكن للآخرين رؤيته.
-  apiKey: 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo',
-
-  // Channel ID الخاص بقناة ZAMZOK.
-  channelId: 'UCNuIyleVU-8sXQFDitaKiSg',
-
-  maxVideos: 30,
-  apiBase: 'https://www.googleapis.com/youtube/v3'
-};
-
-const ZAMZOK = {
-  videos: [],
-  currentIndex: 0,
-  overlay: null,
-  iframe: null,
-  titleElement: null,
-  counterElement: null,
-  stage: null,
-  videoContainer: null,
-  historyEntryActive: false,
-  ignoreNextPopstate: false,
-  previousBodyOverflow: '',
-  touchStartX: 0,
-  touchStartY: 0,
-  touchStartTime: 0,
-  pointerStartX: 0,
-  pointerStartY: 0,
-  loading: false,
-  requestId: 0
-};
-
-/* =========================================
-   HELPERS
-========================================= */
-
-function $(selector, parent = document) {
-  return parent.querySelector(selector);
-}
-
-function createElement(tag, className, text) {
-  const element = document.createElement(tag);
-
-  if (className) {
-    element.className = className;
-  }
-
-  if (text !== undefined) {
-    element.textContent = text;
-  }
-
-  return element;
-}
-
-function setText(element, value) {
-  if (element) {
-    element.textContent = value || '';
-  }
-}
-
-function safeExternalUrl(url) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol === 'https:') {
-      return parsed.href;
-    }
-  } catch (_) {
-    // Ignore invalid URLs.
-  }
-
-  return 'https://www.youtube.com/';
-}
-
-function getYouTubeUrl(videoId) {
-  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-}
-
-function getThumbnail(video) {
-  const thumbnails = video?.snippet?.thumbnails || {};
-
-  return (
-    thumbnails.maxres?.url ||
-    thumbnails.standard?.url ||
-    thumbnails.high?.url ||
-    thumbnails.medium?.url ||
-    thumbnails.default?.url ||
-    ''
-  );
-}
-
-function getVideoTitle(video) {
-  return video?.snippet?.title || 'فيديو من قناة ZAMZOK';
-}
-
-function isValidVideoId(videoId) {
-  return typeof videoId === 'string' &&
-    /^[a-zA-Z0-9_-]{11}$/.test(videoId);
-}
-
-/* =========================================
-   MOBILE MENU
-========================================= */
-
-function initMobileMenu() {
-  const menuToggle = $('#menuToggle');
-  const mainNav = $('#mainNav');
-
-  if (!menuToggle || !mainNav) {
-    return;
-  }
-
-  function closeMenu() {
-    mainNav.classList.remove('open');
-    menuToggle.setAttribute('aria-expanded', 'false');
-  }
-
-  menuToggle.setAttribute('aria-expanded', 'false');
-
-  menuToggle.addEventListener('click', () => {
-    const isOpen = mainNav.classList.toggle('open');
-
-    menuToggle.setAttribute('aria-expanded', String(isOpen));
-  });
-
-  mainNav.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', closeMenu);
-  });
-
-  document.addEventListener('click', (event) => {
-    if (
-      mainNav.classList.contains('open') &&
-      !mainNav.contains(event.target) &&
-      !menuToggle.contains(event.target)
-    ) {
-      closeMenu();
-    }
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closeMenu();
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 720) {
-      closeMenu();
-    }
-  });
-}
-
-/* =========================================
-   FOOTER YEAR
-========================================= */
-
-function initFooterYear() {
-  const yearElement = $('#year');
-
-  if (yearElement) {
-    yearElement.textContent = String(new Date().getFullYear());
-  }
-}
-
-/* =========================================
-   YOUTUBE API
-========================================= */
-
-async function fetchYouTubeJson(endpoint, params = {}) {
-  const url = new URL(`${ZAMZOK_CONFIG.apiBase}/${endpoint}`);
-
-  Object.entries({
-    ...params,
-    key: ZAMZOK_CONFIG.apiKey
-  }).forEach(([key, value]) => {
-    url.searchParams.set(key, String(value));
-  });
-
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    let details = '';
-
-    try {
-      const errorData = await response.json();
-      details = errorData?.error?.message || '';
-    } catch (_) {
-      // Ignore invalid error response.
-    }
-
-    throw new Error(
-      details || `YouTube API error: ${response.status}`
-    );
-  }
-
-  return response.json();
-}
-
-async function fetchChannelVideos() {
-  if (
-    !ZAMZOK_CONFIG.apiKey ||
-    ZAMZOK_CONFIG.apiKey === 'PASTE_YOUR_YOUTUBE_API_KEY_HERE'
-  ) {
-    throw new Error('لم يتم إدخال مفتاح YouTube Data API في ملف script.js.');
-  }
-
-  const channelData = await fetchYouTubeJson('channels', {
-    part: 'contentDetails',
-    id: ZAMZOK_CONFIG.channelId
-  });
-
-  const channel = channelData.items?.[0];
-
-  if (!channel) {
-    throw new Error('لم يتم العثور على قناة YouTube. راجع Channel ID.');
-  }
-
-  const uploadsPlaylistId =
-    channel.contentDetails?.relatedPlaylists?.uploads;
-
-  if (!uploadsPlaylistId) {
-    throw new Error('تعذر العثور على قائمة فيديوهات القناة.');
-  }
-
-  const allVideos = [];
-  let pageToken = '';
-
-  while (allVideos.length < ZAMZOK_CONFIG.maxVideos) {
-    const params = {
-      part: 'snippet,contentDetails',
-      playlistId: uploadsPlaylistId,
-      maxResults: Math.min(
-        50,
-        ZAMZOK_CONFIG.maxVideos - allVideos.length
-      )
-    };
-
-    if (pageToken) {
-      params.pageToken = pageToken;
-    }
-
-    const data = await fetchYouTubeJson('playlistItems', params);
-
-    const items = (data.items || [])
-      .map((item) => {
-        const videoId = item.contentDetails?.videoId;
-
-        if (!isValidVideoId(videoId)) {
-          return null;
-        }
-
-        return {
-          id: videoId,
-          snippet: item.snippet || {},
-          contentDetails: item.contentDetails || {}
-        };
-      })
-      .filter(Boolean);
-
-    allVideos.push(...items);
-
-    pageToken = data.nextPageToken || '';
-
-    if (!pageToken || items.length === 0) {
-      break;
-    }
-  }
-
-  return allVideos.slice(0, ZAMZOK_CONFIG.maxVideos);
-}
-
-/* =========================================
-   VIDEO GRID
-========================================= */
-
-function setGridMessage(message, isError = false) {
-  const grid = $('#videoGrid');
-
-  if (!grid) {
-    return;
-  }
-
-  grid.replaceChildren();
-
-  const paragraph = createElement(
-    'p',
-    isError ? 'video-grid-error' : 'video-grid-message',
-    message
-  );
-
-  paragraph.setAttribute('role', isError ? 'alert' : 'status');
-
-  grid.appendChild(paragraph);
-  grid.setAttribute('aria-busy', 'false');
-}
-
-function createVideoCard(video, index) {
-  const card = createElement('article', 'zamzok-video-card');
-
-  const button = createElement('button', 'zamzok-video-button');
-  button.type = 'button';
-  button.dataset.videoId = video.id;
-  button.dataset.videoIndex = String(index);
-  button.setAttribute('aria-label', `تشغيل الفيديو: ${getVideoTitle(video)}`);
-
-  const image = createElement('img');
-
-  image.src =
-    getThumbnail(video) ||
-    `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
-
-  image.alt = getVideoTitle(video);
-  image.loading = index < 4 ? 'eager' : 'lazy';
-  image.decoding = 'async';
-  image.referrerPolicy = 'strict-origin-when-cross-origin';
-
-  image.onerror = () => {
-    image.onerror = null;
-    image.src = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
-  };
-
-  const playIndicator = createElement('span', 'video-play-indicator', '▶');
-  playIndicator.setAttribute('aria-hidden', 'true');
-
-  button.append(image, playIndicator);
-
-  const info = createElement('div', 'video-info');
-  const heading = createElement('h3', '', getVideoTitle(video));
-
-  info.appendChild(heading);
-  card.append(button, info);
-
-  return card;
-}
-
-function renderVideoGrid(videos) {
-  const grid = $('#videoGrid');
-
-  if (!grid) {
-    return;
-  }
-
-  grid.replaceChildren();
-
-  if (!videos.length) {
-    setGridMessage('لا توجد فيديوهات متاحة للعرض حاليًا.', true);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  videos.forEach((video, index) => {
-    fragment.appendChild(createVideoCard(video, index));
-  });
-
-  grid.appendChild(fragment);
-  grid.setAttribute('aria-busy', 'false');
-}
-
-/* =========================================
-   REELS OVERLAY CREATION
-========================================= */
-
-function createReelsOverlay() {
-  if (ZAMZOK.overlay) {
-    return;
-  }
-
-  const overlay = createElement('div', 'zamzok-reels-overlay');
-  overlay.id = 'zamzokReelsOverlay';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'مشغل فيديوهات ZAMZOK');
-  overlay.setAttribute('aria-hidden', 'true');
-
-  const header = createElement('header', 'zamzok-reels-header');
-
-  const brand = createElement(
-    'div',
-    'zamzok-reels-brand',
-    'ZAMZOK'
-  );
-
-  const headerActions = createElement(
-    'div',
-    'zamzok-reels-header-actions'
-  );
-
-  const fullscreenButton = createElement(
-    'button',
-    'zamzok-reels-fullscreen',
-    '⛶'
-  );
-
-  fullscreenButton.type = 'button';
-  fullscreenButton.setAttribute('aria-label', 'ملء الشاشة');
-  fullscreenButton.title = 'ملء الشاشة';
-
-  const closeButton = createElement(
-    'button',
-    'zamzok-reels-close',
-    '×'
-  );
-
-  closeButton.type = 'button';
-  closeButton.setAttribute('aria-label', 'إغلاق الفيديو');
-  closeButton.title = 'إغلاق';
-
-  headerActions.append(fullscreenButton, closeButton);
-  header.append(brand, headerActions);
-
-  const stage = createElement('div', 'zamzok-reels-stage');
-  stage.setAttribute('aria-label', 'مشغل الفيديو');
-
-  const videoContainer = createElement('div', 'zamzok-reels-video');
-
-  const loading = createElement(
-    'div',
-    'zamzok-reels-loading',
-    'جاري تحميل الفيديو...'
-  );
-
-  loading.setAttribute('role', 'status');
-
-  videoContainer.appendChild(loading);
-
-  const hint = createElement(
-    'div',
-    'zamzok-reels-hint',
-    'استخدم الأسهم أو أزرار التنقل للفيديو التالي والسابق'
-  );
-
-  hint.setAttribute('aria-hidden', 'true');
-
-  stage.append(videoContainer, hint);
-
-  const actions = createElement('div', 'zamzok-reels-actions');
-
-  const shareButton = createElement(
-    'button',
-    'zamzok-reels-action',
-    '↗'
-  );
-
-  shareButton.type = 'button';
-  shareButton.setAttribute('aria-label', 'مشاركة الفيديو');
-  shareButton.title = 'مشاركة';
-
-  const youtubeButton = createElement(
-    'button',
-    'zamzok-reels-action',
-    '▶'
-  );
-
-  youtubeButton.type = 'button';
-  youtubeButton.setAttribute('aria-label', 'فتح الفيديو على YouTube');
-  youtubeButton.title = 'فتح على YouTube';
-
-  actions.append(shareButton, youtubeButton);
-
-  const bottom = createElement('div', 'zamzok-reels-bottom');
-
-  const info = createElement('div', 'zamzok-reels-info');
-
-  const title = createElement('h2', 'zamzok-reels-title');
-  const counter = createElement('span', 'zamzok-reels-counter');
-
-  info.append(title, counter);
-
-  const navigation = createElement('div', 'zamzok-reels-nav');
-
-  const previousButton = createElement(
-    'button',
-    'zamzok-reels-prev',
-    '↑ السابق'
-  );
-
-  previousButton.type = 'button';
-  previousButton.setAttribute('aria-label', 'الفيديو السابق');
-
-  const nextButton = createElement(
-    'button',
-    'zamzok-reels-next',
-    'التالي ↓'
-  );
-
-  nextButton.type = 'button';
-  nextButton.setAttribute('aria-label', 'الفيديو التالي');
-
-  navigation.append(previousButton, nextButton);
-  bottom.append(info, navigation);
-
-  overlay.append(header, stage, actions, bottom);
-  document.body.appendChild(overlay);
-
-  ZAMZOK.overlay = overlay;
-  ZAMZOK.iframe = null;
-  ZAMZOK.titleElement = title;
-  ZAMZOK.counterElement = counter;
-  ZAMZOK.stage = stage;
-  ZAMZOK.videoContainer = videoContainer;
-
-  closeButton.addEventListener('click', closeReels);
-  fullscreenButton.addEventListener('click', toggleFullscreen);
-
-  previousButton.addEventListener('click', () => {
-    showVideo(ZAMZOK.currentIndex - 1);
-  });
-
-  nextButton.addEventListener('click', () => {
-    showVideo(ZAMZOK.currentIndex + 1);
-  });
-
-  shareButton.addEventListener('click', shareCurrentVideo);
-
-  youtubeButton.addEventListener('click', () => {
-    const video = ZAMZOK.videos[ZAMZOK.currentIndex];
-
-    if (video) {
-      window.open(
-        safeExternalUrl(getYouTubeUrl(video.id)),
-        '_blank',
-        'noopener,noreferrer'
-      );
-    }
-  });
-
-  /*
-   * Gestures on the stage work where the touch event is received
-   * by the page. YouTube's iframe may capture gestures inside itself.
-   */
-  stage.addEventListener(
-    'touchstart',
-    (event) => {
-      const touch = event.changedTouches?.[0];
-
-      if (!touch) {
-        return;
-      }
-
-      ZAMZOK.touchStartX = touch.clientX;
-      ZAMZOK.touchStartY = touch.clientY;
-      ZAMZOK.touchStartTime = Date.now();
-    },
-    { passive: true }
-  );
-
-  stage.addEventListener(
-    'touchend',
-    (event) => {
-      const touch = event.changedTouches?.[0];
-
-      if (!touch) {
-        return;
-      }
-
-      const deltaX = touch.clientX - ZAMZOK.touchStartX;
-      const deltaY = touch.clientY - ZAMZOK.touchStartY;
-      const elapsed = Date.now() - ZAMZOK.touchStartTime;
-
-      if (elapsed > 900) {
-        return;
-      }
-
-      handleSwipe(deltaX, deltaY);
-    },
-    { passive: true }
-  );
-
-  stage.addEventListener('pointerdown', (event) => {
-    ZAMZOK.pointerStartX = event.clientX;
-    ZAMZOK.pointerStartY = event.clientY;
-  });
-
-  stage.addEventListener('pointerup', (event) => {
-    if (event.pointerType === 'touch') {
-      return;
-    }
-
-    const deltaX = event.clientX - ZAMZOK.pointerStartX;
-    const deltaY = event.clientY - ZAMZOK.pointerStartY;
-
-    handleSwipe(deltaX, deltaY);
-  });
-
-  /*
-   * Clicking the dark area outside the video closes the player.
-   */
-  stage.addEventListener('click', (event) => {
-    if (
-      event.target === stage ||
-      event.target.classList.contains('zamzok-reels-hint')
-    ) {
-      closeReels();
-    }
-  });
-}
-
-/* =========================================
-   VIDEO PLAYBACK
-========================================= */
-
-function setReelsLoading(isLoading) {
-  const loading = $('.zamzok-reels-loading', ZAMZOK.videoContainer);
-
-  if (loading) {
-    loading.style.display = isLoading ? 'flex' : 'none';
-  }
-}
-
-function createYouTubeEmbedUrl(videoId) {
-  const url = new URL(
-    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`
-  );
-
-  url.searchParams.set('autoplay', '1');
-  url.searchParams.set('playsinline', '1');
-  url.searchParams.set('rel', '0');
-  url.searchParams.set('controls', '1');
-  url.searchParams.set('enablejsapi', '1');
-
-  return url.toString();
-}
-
-function showVideo(index) {
-  if (!ZAMZOK.videos.length) {
-    return;
-  }
-
-  if (index < 0 || index >= ZAMZOK.videos.length) {
-    return;
-  }
-
-  ZAMZOK.currentIndex = index;
-
-  const video = ZAMZOK.videos[index];
-
-  setText(ZAMZOK.titleElement, getVideoTitle(video));
-  setText(
-    ZAMZOK.counterElement,
-    `${index + 1} / ${ZAMZOK.videos.length}`
-  );
-
-  const previousButton = $('.zamzok-reels-prev', ZAMZOK.overlay);
-  const nextButton = $('.zamzok-reels-next', ZAMZOK.overlay);
-
-  if (previousButton) {
-    previousButton.disabled = index <= 0;
-  }
-
-  if (nextButton) {
-    nextButton.disabled = index >= ZAMZOK.videos.length - 1;
-  }
-
-  const oldIframe = $('iframe', ZAMZOK.videoContainer);
-
-  if (oldIframe) {
-    oldIframe.remove();
-  }
-
-  ZAMZOK.iframe = null;
-  setReelsLoading(true);
-
-  const iframe = document.createElement('iframe');
-
-  iframe.src = createYouTubeEmbedUrl(video.id);
-  iframe.title = getVideoTitle(video);
-  iframe.allow =
-    'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-  iframe.allowFullscreen = true;
-  iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-  iframe.loading = 'eager';
-
-  iframe.addEventListener('load', () => {
-    if (ZAMZOK.iframe === iframe) {
-      setReelsLoading(false);
-    }
-  });
-
-  /*
-   * YouTube embeds do not always provide a useful error event.
-   * This timeout only removes the loading indicator; it does not
-   * claim that playback succeeded.
-   */
-  const thisRequestId = ++ZAMZOK.requestId;
-
-  window.setTimeout(() => {
-    if (
-      thisRequestId === ZAMZOK.requestId &&
-      ZAMZOK.iframe === iframe
-    ) {
-      setReelsLoading(false);
-    }
-  }, 10000);
-
-  ZAMZOK.iframe = iframe;
-  ZAMZOK.videoContainer.appendChild(iframe);
-}
-
-function openReels(index) {
-  if (!ZAMZOK.videos.length) {
-    return;
-  }
-
-  createReelsOverlay();
-
-  const targetIndex = Math.max(
-    0,
-    Math.min(index, ZAMZOK.videos.length - 1)
-  );
-
-  ZAMZOK.previousBodyOverflow = document.body.style.overflow;
-
-  ZAMZOK.overlay.classList.add('is-open');
-  ZAMZOK.overlay.setAttribute('aria-hidden', 'false');
-
-  document.body.classList.add('zamzok-reels-active');
-  document.body.style.overflow = 'hidden';
-
-  /*
-   * Add a same-page history entry so browser back can close the player.
-   * A native WebView or wrapper may override back handling separately.
-   */
-  if (!ZAMZOK.historyEntryActive) {
-    try {
-      history.pushState(
-        { zamzokReels: true },
-        '',
-        window.location.href
-      );
-
-      ZAMZOK.historyEntryActive = true;
-    } catch (_) {
-      ZAMZOK.historyEntryActive = false;
-    }
-  }
-
-  showVideo(targetIndex);
-}
-
-function closeReels(options = {}) {
-  const { fromPopstate = false } = options;
-
-  if (!ZAMZOK.overlay || !ZAMZOK.overlay.classList.contains('is-open')) {
-    return;
-  }
-
-  ZAMZOK.overlay.classList.remove('is-open');
-  ZAMZOK.overlay.setAttribute('aria-hidden', 'true');
-
-  document.body.classList.remove('zamzok-reels-active');
-  document.body.style.overflow = ZAMZOK.previousBodyOverflow || '';
-
-  /*
-   * Removing the iframe stops its playback.
-   */
-  if (ZAMZOK.iframe) {
-    ZAMZOK.iframe.src = 'about:blank';
-    ZAMZOK.iframe.remove();
-    ZAMZOK.iframe = null;
-  }
-
-  ZAMZOK.requestId += 1;
-
-  if (ZAMZOK.videoContainer) {
-    ZAMZOK.videoContainer.replaceChildren();
-    ZAMZOK.videoContainer.appendChild(
-      createElement(
-        'div',
-        'zamzok-reels-loading',
-        'اختر فيديو لتشغيله'
-      )
-    );
-  }
-
-  if (document.fullscreenElement) {
-    document.exitFullscreen?.().catch?.(() => {});
-  }
-
-  if (!fromPopstate && ZAMZOK.historyEntryActive) {
-    ZAMZOK.ignoreNextPopstate = true;
-    history.back();
-  }
-
-  ZAMZOK.historyEntryActive = false;
-}
-
-/* =========================================
-   SWIPE / KEYBOARD NAVIGATION
-========================================= */
-
-function handleSwipe(deltaX, deltaY) {
-  const minDistance = 55;
-
-  if (Math.abs(deltaY) < minDistance && Math.abs(deltaX) < minDistance) {
-    return;
-  }
-
-  if (Math.abs(deltaY) > Math.abs(deltaX)) {
-    if (deltaY < 0) {
-      showVideo(ZAMZOK.currentIndex + 1);
-    } else {
-      showVideo(ZAMZOK.currentIndex - 1);
-    }
-
-    return;
-  }
-
-  if (Math.abs(deltaX) > 90) {
-    if (deltaX < 0) {
-      showVideo(ZAMZOK.currentIndex + 1);
-    } else {
-      showVideo(ZAMZOK.currentIndex - 1);
-    }
-  }
-}
-
-function initKeyboardNavigation() {
-  document.addEventListener('keydown', (event) => {
-    if (
-      !ZAMZOK.overlay ||
-      !ZAMZOK.overlay.classList.contains('is-open')
-    ) {
-      return;
-    }
-
-    const target = event.target;
-
-    if (
-      target instanceof HTMLElement &&
-      (
-        target.isContentEditable ||
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-      )
-    ) {
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeReels();
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      showVideo(ZAMZOK.currentIndex + 1);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      showVideo(ZAMZOK.currentIndex - 1);
-    }
-  });
-}
-
-/* =========================================
-   ANDROID / BROWSER BACK
-========================================= */
-
-function initBackNavigation() {
-  window.addEventListener('popstate', () => {
-    if (ZAMZOK.ignoreNextPopstate) {
-      ZAMZOK.ignoreNextPopstate = false;
-      return;
-    }
-
-    if (
-      ZAMZOK.overlay &&
-      ZAMZOK.overlay.classList.contains('is-open')
-    ) {
-      closeReels({ fromPopstate: true });
-    }
-  });
-}
-
-/* =========================================
-   FULLSCREEN
-========================================= */
-
-async function toggleFullscreen() {
-  const overlay = ZAMZOK.overlay;
-
-  if (!overlay) {
-    return;
-  }
-
-  try {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-      overlay.classList.remove('force-fullscreen');
-      return;
-    }
-
-    if (overlay.requestFullscreen) {
-      await overlay.requestFullscreen();
-      return;
-    }
-  } catch (_) {
-    // Use the CSS fallback if fullscreen is unavailable.
-  }
-
-  overlay.classList.toggle('force-fullscreen');
-}
-
-/* =========================================
-   SHARE
-========================================= */
-
-async function shareCurrentVideo() {
-  const video = ZAMZOK.videos[ZAMZOK.currentIndex];
-
-  if (!video) {
-    return;
-  }
-
-  const url = getYouTubeUrl(video.id);
-  const title = getVideoTitle(video);
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, url });
-      return;
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        return;
-      }
-    }
-  }
-
-  try {
-    await navigator.clipboard.writeText(url);
-    showTemporaryMessage('تم نسخ رابط الفيديو.');
-  } catch (_) {
-    window.prompt('انسخ رابط الفيديو:', url);
-  }
-}
-
-function showTemporaryMessage(message) {
-  const toast = createElement('div', 'zamzok-toast', message);
-
-  Object.assign(toast.style, {
-    position: 'fixed',
-    zIndex: '2147483647',
-    left: '50%',
-    bottom: '25px',
-    transform: 'translateX(-50%)',
-    maxWidth: '90%',
-    padding: '10px 16px',
-    border: '1px solid rgba(244,199,106,.4)',
-    borderRadius: '12px',
-    background: '#171321',
-    color: '#fff',
-    fontFamily: 'Cairo, sans-serif',
-    fontSize: '13px',
-    textAlign: 'center'
-  });
-
-  document.body.appendChild(toast);
-
-  window.setTimeout(() => {
-    toast.remove();
-  }, 2400);
-}
-
-/* =========================================
-   GRID EVENTS
-========================================= */
-
-function initVideoGrid() {
-  const grid = $('#videoGrid');
-
-  if (!grid) {
-    return;
-  }
-
-  grid.addEventListener('click', (event) => {
-    const button = event.target.closest('.zamzok-video-button');
-
-    if (!button || !grid.contains(button)) {
-      return;
-    }
-
-    const index = Number.parseInt(button.dataset.videoIndex, 10);
-    const videoId = button.dataset.videoId;
-
-    if (!Number.isInteger(index) || !videoId) {
-      return;
-    }
-
-    openReels(index);
-  });
-}
-
-/* =========================================
-   LOAD CHANNEL
-========================================= */
-
-async function initVideos() {
-  const grid = $('#videoGrid');
-
-  if (grid) {
-    grid.setAttribute('aria-busy', 'true');
-  }
-
-  try {
-    const videos = await fetchChannelVideos();
-
-    ZAMZOK.videos = videos;
-    renderVideoGrid(videos);
-  } catch (error) {
-    console.error('[ZAMZOK] Failed to load YouTube videos:', error);
-
-    const message = String(error.message || '');
-
-    if (message.includes('API key')) {
-      setGridMessage(
-        'أضف مفتاح YouTube Data API v3 في ملف script.js لعرض فيديوهات القناة.',
-        true
-      );
-    } else if (
-      message.toLowerCase().includes('quota') ||
-      message.toLowerCase().includes('exceeded')
-    ) {
-      setGridMessage(
-        'وصل طلب تحميل الفيديوهات إلى حد استخدام YouTube API. حاول مرة أخرى لاحقًا.',
-        true
-      );
-    } else {
-      setGridMessage(
-        'تعذر تحميل الفيديوهات حاليًا. راجع مفتاح API واتصال الإنترنت وإعدادات Google Cloud.',
-        true
-      );
-    }
-  }
-}
-
-/* =========================================
-   INITIALIZE
-========================================= */
-
-document.addEventListener('DOMContentLoaded', () => {
-  initMobileMenu();
-  initFooterYear();
-  initVideoGrid();
-  initKeyboardNavigation();
-  initBackNavigation();
-
-  createReelsOverlay();
-  initVideos();
-});
-```
+‏// ==================================================
+‏// ZAMZOK WEBSITE — COMPLETE SCRIPT.JS
+‏// YouTube Videos + Fullscreen Reels + Swipe Navigation
+‏// ==================================================
+‏
+‏// ------------------------------
+‏// 1. القائمة الرئيسية
+‏// ------------------------------
+‏
+‏const toggle = document.getElementById('menuToggle');
+‏const nav = document.getElementById('mainNav');
+‏
+‏if (toggle && nav) {
+‏  toggle.addEventListener('click', () => {
+‏    const isOpen = nav.classList.toggle('open');
+‏
+‏    toggle.setAttribute('aria-expanded', String(isOpen));
+‏    toggle.textContent = isOpen ? '✕' : '☰';
+‏  });
+‏
+‏  nav.querySelectorAll('a').forEach(link => {
+‏    link.addEventListener('click', () => {
+‏      nav.classList.remove('open');
+‏      toggle.setAttribute('aria-expanded', 'false');
+‏      toggle.textContent = '☰';
+‏    });
+‏  });
+‏}
+‏
+‏// ------------------------------
+‏// 2. السنة الحالية
+‏// ------------------------------
+‏
+‏const yearElement = document.getElementById('year');
+‏
+‏if (yearElement) {
+‏  yearElement.textContent = new Date().getFullYear();
+‏}
+‏
+‏// ------------------------------
+‏// 3. إعدادات YouTube API
+‏// ------------------------------
+‏
+‏const YOUTUBE_API_KEY = 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo';
+‏const YOUTUBE_CHANNEL_ID = 'UCNuIyleVU-8sXQFDitaKiSg';
+‏const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
+‏
+‏const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@zamzoktv';
+‏
+‏// ------------------------------
+‏// 4. متغيرات الريلز
+‏// ------------------------------
+‏
+‏let zamzokReels = [];
+‏let zamzokCurrentIndex = 0;
+‏let zamzokReelsOverlay = null;
+‏let zamzokTouchStartX = 0;
+‏let zamzokTouchStartY = 0;
+‏let zamzokPlayerReady = false;
+‏
+‏// ------------------------------
+‏// 5. حماية النصوص
+‏// ------------------------------
+‏
+‏function escapeHTML(value) {
+‏  return String(value).replace(/[&<>"']/g, character => ({
+‏    '&': '&amp;',
+‏    '<': '&lt;',
+‏    '>': '&gt;',
+‏    '"': '&quot;',
+‏    "'": '&#39;'
+‏  })[character]);
+‏}
+‏
+‏// ------------------------------
+‏// 6. رسائل الفيديوهات
+‏// ------------------------------
+‏
+‏function showVideoMessage(message) {
+‏  const grid = document.getElementById('videoGrid');
+‏
+‏  if (!grid) return;
+‏
+‏  grid.innerHTML = `
+‏    <p style="
+‏      color:#ffcf55;
+‏      text-align:center;
+‏      padding:24px;
+‏      grid-column:1/-1;
+‏      line-height:2;
+‏    ">${escapeHTML(message)}</p>
+‏  `;
+‏}
+‏
+‏// ------------------------------
+‏// 7. الاتصال بواجهة YouTube API
+‏// ------------------------------
+‏
+‏async function youtubeRequest(endpoint, params = {}) {
+‏  const url = new URL(`${YOUTUBE_API_URL}/${endpoint}`);
+‏
+‏  Object.entries({
+‏    ...params,
+‏    key: YOUTUBE_API_KEY
+‏  }).forEach(([key, value]) => {
+‏    url.searchParams.set(key, value);
+‏  });
+‏
+‏  const response = await fetch(url.toString());
+‏
+‏  let data;
+‏
+‏  try {
+‏    data = await response.json();
+‏  } catch {
+‏    throw new Error('تعذر قراءة استجابة يوتيوب.');
+‏  }
+‏
+‏  if (!response.ok) {
+‏    const reason = data?.error?.errors?.[0]?.reason;
+‏
+‏    if (reason === 'quotaExceeded') {
+‏      throw new Error('تم استهلاك حصة YouTube API اليومية.');
+‏    }
+‏
+‏    if (reason === 'keyInvalid') {
+‏      throw new Error('مفتاح YouTube API غير صحيح.');
+‏    }
+‏
+‏    if (response.status === 403) {
+‏      throw new Error(
+‏        'رفض يوتيوب الطلب. راجع إعدادات المفتاح وصلاحيات API.'
+‏      );
+‏    }
+‏
+‏    throw new Error(
+‏      data?.error?.message ||
+‏      `حدث خطأ أثناء الاتصال بيوتيوب (${response.status}).`
+‏    );
+‏  }
+‏
+‏  return data;
+‏}
+‏
+‏// ------------------------------
+‏// 8. تحميل جميع فيديوهات القناة
+‏// ------------------------------
+‏
+‏async function loadZamzokVideos() {
+‏  const grid = document.getElementById('videoGrid');
+‏
+‏  if (!grid) return;
+‏
+‏  grid.innerHTML = `
+‏    <p style="
+‏      color:#ffcf55;
+‏      text-align:center;
+‏      grid-column:1/-1;
+‏    ">جاري تحميل فيديوهات ZAMZOK...</p>
+‏  `;
+‏
+‏  try {
+‏    // جلب قائمة الفيديوهات المرفوعة
+‏    const channelData = await youtubeRequest('channels', {
+‏      part: 'contentDetails',
+‏      id: YOUTUBE_CHANNEL_ID
+‏    });
+‏
+‏    if (!channelData.items?.length) {
+‏      throw new Error('لم يتم العثور على القناة.');
+‏    }
+‏
+‏    const uploadsPlaylist =
+‏      channelData.items[0].contentDetails.relatedPlaylists.uploads;
+‏
+‏    if (!uploadsPlaylist) {
+‏      throw new Error('تعذر العثور على قائمة فيديوهات القناة.');
+‏    }
+‏
+‏    const videos = [];
+‏    let pageToken = '';
+‏
+‏    // تحميل كل الصفحات
+‏    do {
+‏      const params = {
+‏        part: 'snippet,contentDetails',
+‏        playlistId: uploadsPlaylist,
+‏        maxResults: '50'
+‏      };
+‏
+‏      if (pageToken) {
+‏        params.pageToken = pageToken;
+‏      }
+‏
+‏      const playlistData = await youtubeRequest(
+‏        'playlistItems',
+‏        params
+‏      );
+‏
+‏      videos.push(...(playlistData.items || []));
+‏      pageToken = playlistData.nextPageToken || '';
+‏
+‏    } while (pageToken);
+‏
+‏    if (!videos.length) {
+‏      showVideoMessage('لا توجد فيديوهات متاحة حاليًا.');
+‏      return;
+‏    }
+‏
+‏    // تجهيز بيانات الفيديوهات
+‏    zamzokReels = videos
+‏      .map(video => {
+‏        const id = video.contentDetails?.videoId;
+‏
+‏        if (!id) return null;
+‏
+‏        const thumbnails = video.snippet?.thumbnails || {};
+‏
+‏        return {
+‏          id,
+‏          title: video.snippet?.title || 'فيديو ZAMZOK',
+‏          thumbnail:
+‏            thumbnails.maxres?.url ||
+‏            thumbnails.high?.url ||
+‏            thumbnails.medium?.url ||
+‏            thumbnails.default?.url ||
+‏            `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+‏          publishedAt: video.snippet?.publishedAt || ''
+‏        };
+‏      })
+‏      .filter(Boolean);
+‏
+‏    // عرض البطاقات
+‏    grid.innerHTML = zamzokReels.map((video, index) => `
+‏      <article class="video-card zamzok-video-card">
+‏        <button
+‏          class="zamzok-video-button"
+‏          type="button"
+‏          data-video-id="${escapeHTML(video.id)}"
+‏          data-video-index="${index}"
+‏          aria-label="تشغيل ${escapeHTML(video.title)}"
+‏          style="
+‏            display:block;
+‏            width:100%;
+‏            padding:0;
+‏            border:0;
+‏            background:#090711;
+‏            color:white;
+‏            cursor:pointer;
+‏            overflow:hidden;
+‏            text-align:right;
+‏          "
+‏        >
+‏          <img
+‏            src="${escapeHTML(video.thumbnail)}"
+‏            alt="${escapeHTML(video.title)}"
+‏            loading="lazy"
+‏            style="
+‏              display:block;
+‏              width:100%;
+‏              aspect-ratio:9/16;
+‏              object-fit:cover;
+‏            "
+‏          >
+‏
+‏          <span style="
+‏            display:block;
+‏            padding:12px;
+‏            text-align:center;
+‏            color:#ffcf55;
+‏            font-weight:bold;
+‏          ">▶ تشغيل الفيديو</span>
+‏        </button>
+‏
+‏        <div class="video-info">
+‏          <h3>${escapeHTML(video.title)}</h3>
+‏        </div>
+‏      </article>
+‏    `).join('');
+‏
+‏    zamzokPlayerReady = true;
+‏
+‏  } catch (error) {
+‏    console.error('ZAMZOK YouTube API error:', error);
+‏    showVideoMessage(`تعذر تحميل الفيديوهات: ${error.message}`);
+‏  }
+‏}
+‏
+‏// ------------------------------
+‏// 9. إنشاء واجهة الريلز
+‏// ------------------------------
+‏
+‏function createZamzokReelsPlayer() {
+‏  if (document.getElementById('zamzokReelsOverlay')) {
+‏    zamzokReelsOverlay =
+‏      document.getElementById('zamzokReelsOverlay');
+‏
+‏    return;
+‏  }
+‏
+‏  const overlay = document.createElement('div');
+‏
+‏  overlay.id = 'zamzokReelsOverlay';
+‏  overlay.className = 'zamzok-reels-overlay';
+‏
+‏  overlay.innerHTML = `
+‏    <header class="zamzok-reels-header">
+‏      <button
+‏        type="button"
+‏        class="zamzok-reels-close"
+‏        aria-label="إغلاق الريلز"
+‏      >✕</button>
+‏
+‏      <div class="zamzok-reels-brand">
+‏        <span class="zamzok-reels-brand-icon">Z</span>
+‏        <span>ZAMZOK <small>REELS</small></span>
+‏      </div>
+‏
+‏      <button
+‏        type="button"
+‏        class="zamzok-reels-fullscreen"
+‏        aria-label="ملء الشاشة"
+‏        title="ملء الشاشة"
+‏      >⛶</button>
+‏    </header>
+‏
+‏    <div class="zamzok-reels-stage">
+‏      <div class="zamzok-reels-video"></div>
+‏
+‏      <div class="zamzok-reels-actions">
+‏        <a
+‏          class="zamzok-reels-action zamzok-reels-channel"
+‏          href="${YOUTUBE_CHANNEL_URL}"
+‏          target="_blank"
+‏          rel="noopener noreferrer"
+‏          aria-label="قناة ZAMZOK"
+‏        >
+‏          <span class="zamzok-reels-avatar">Z</span>
+‏          <span class="zamzok-reels-plus">+</span>
+‏        </a>
+‏
+‏        <button
+‏          type="button"
+‏          class="zamzok-reels-action zamzok-reels-like"
+‏          aria-label="الإعجاب بالفيديو"
+‏        >
+‏          <span class="zamzok-reels-action-icon">♡</span>
+‏          <span>إعجاب</span>
+‏        </button>
+‏
+‏        <button
+‏          type="button"
+‏          class="zamzok-reels-action zamzok-reels-comments"
+‏          aria-label="التعليقات"
+‏        >
+‏          <span class="zamzok-reels-action-icon">▤</span>
+‏          <span>تعليقات</span>
+‏        </button>
+‏
+‏        <button
+‏          type="button"
+‏          class="zamzok-reels-action zamzok-reels-share"
+‏          aria-label="مشاركة الفيديو"
+‏        >
+‏          <span class="zamzok-reels-action-icon">↗</span>
+‏          <span>مشاركة</span>
+‏        </button>
+‏      </div>
+‏
+‏      <div class="zamzok-reels-bottom">
+‏        <div class="zamzok-reels-account">
+‏          <span class="zamzok-reels-name">@zamzoktv</span>
+‏          <span class="zamzok-reels-live-dot"></span>
+‏        </div>
+‏
+‏        <h2 class="zamzok-reels-title"></h2>
+‏
+‏        <p class="zamzok-reels-hint">
+‏          اسحب لأعلى للفيديو التالي
+‏        </p>
+‏      </div>
+‏
+‏      <button
+‏        type="button"
+‏        class="zamzok-reels-nav zamzok-reels-prev"
+‏        aria-label="الفيديو السابق"
+‏      >⌃</button>
+‏
+‏      <button
+‏        type="button"
+‏        class="zamzok-reels-nav zamzok-reels-next"
+‏        aria-label="الفيديو التالي"
+‏      >⌄</button>
+‏    </div>
+‏
+‏    <div class="zamzok-reels-counter"></div>
+‏  `;
+‏
+‏  document.body.appendChild(overlay);
+‏  zamzokReelsOverlay = overlay;
+‏
+‏  overlay.querySelector('.zamzok-reels-close')
+‏    .addEventListener('click', closeZamzokReels);
+‏
+‏  overlay.querySelector('.zamzok-reels-fullscreen')
+‏    .addEventListener('click', toggleZamzokFullscreen);
+‏
+‏  overlay.querySelector('.zamzok-reels-prev')
+‏    .addEventListener('click', () => {
+‏      showZamzokReel(zamzokCurrentIndex - 1);
+‏    });
+‏
+‏  overlay.querySelector('.zamzok-reels-next')
+‏    .addEventListener('click', () => {
+‏      showZamzokReel(zamzokCurrentIndex + 1);
+‏    });
+‏
+‏  overlay.querySelector('.zamzok-reels-like')
+‏    .addEventListener('click', () => {
+‏      openZamzokOnYouTube();
+‏    });
+‏
+‏  overlay.querySelector('.zamzok-reels-comments')
+‏    .addEventListener('click', () => {
+‏      openZamzokOnYouTube();
+‏    });
+‏
+‏  overlay.querySelector('.zamzok-reels-share')
+‏    .addEventListener('click', shareZamzokReel);
+‏
+‏  // السحب بين الفيديوهات
+‏  const stage = overlay.querySelector('.zamzok-reels-stage');
+‏
+‏  stage.addEventListener('touchstart', event => {
+‏    if (event.touches.length !== 1) return;
+‏
+‏    zamzokTouchStartX = event.touches[0].clientX;
+‏    zamzokTouchStartY = event.touches[0].clientY;
+‏  }, { passive: true });
+‏
+‏  stage.addEventListener('touchend', event => {
+‏    if (event.changedTouches.length !== 1) return;
+‏
+‏    const deltaX =
+‏      event.changedTouches[0].clientX - zamzokTouchStartX;
+‏
+‏    const deltaY =
+‏      event.changedTouches[0].clientY - zamzokTouchStartY;
+‏
+‏    if (
+‏      Math.abs(deltaY) < 60 ||
+‏      Math.abs(deltaY) < Math.abs(deltaX)
+‏    ) {
+‏      return;
+‏    }
+‏
+‏    if (deltaY < 0) {
+‏      showZamzokReel(zamzokCurrentIndex + 1);
+‏    } else {
+‏      showZamzokReel(zamzokCurrentIndex - 1);
+‏    }
+‏  }, { passive: true });
+‏
+‏  // دعم لوحة المفاتيح
+‏  document.addEventListener('keydown', handleZamzokReelsKeyboard);
+‏}
+‏
+‏// ------------------------------
+‏// 10. فتح واجهة الريلز
+‏// ------------------------------
+‏
+‏function openZamzokReels(index) {
+‏  if (!zamzokReels.length) {
+‏    zamzokReels = collectZamzokReels();
+‏  }
+‏
+‏  if (!zamzokReels.length) {
+‏    alert('الفيديوهات لم تُحمّل بعد. حاول مرة أخرى.');
+‏    return;
+‏  }
+‏
+‏  createZamzokReelsPlayer();
+‏
+‏  zamzokCurrentIndex = Math.max(
+‏    0,
+‏    Math.min(index, zamzokReels.length - 1)
+‏  );
+‏
+‏  zamzokReelsOverlay.classList.add('is-open');
+‏  document.body.classList.add('zamzok-reels-active');
+‏
+‏  showZamzokReel(zamzokCurrentIndex);
+‏}
+‏
+‏// ------------------------------
+‏// 11. جمع الفيديوهات من الصفحة
+‏// ------------------------------
+‏
+‏function collectZamzokReels() {
+‏  if (zamzokReels.length) return zamzokReels;
+‏
+‏  const grid = document.getElementById('videoGrid');
+‏
+‏  if (!grid) return [];
+‏
+‏  return Array.from(
+‏    grid.querySelectorAll('.zamzok-video-card')
+‏  ).map(card => {
+‏    const button = card.querySelector('.zamzok-video-button');
+‏
+‏    if (!button) return null;
+‏
+‏    const id = button.dataset.videoId;
+‏
+‏    return id ? {
+‏      id,
+‏      title:
+‏        card.querySelector('h3')?.textContent?.trim() ||
+‏        'فيديو ZAMZOK'
+‏    } : null;
+‏  }).filter(Boolean);
+‏}
+‏
+‏// ------------------------------
+‏// 12. عرض فيديو داخل واجهة الريلز
+‏// ------------------------------
+‏
+‏function showZamzokReel(index) {
+‏  if (!zamzokReelsOverlay || !zamzokReels.length) return;
+‏
+‏  if (index < 0 || index >= zamzokReels.length) return;
+‏
+‏  zamzokCurrentIndex = index;
+‏
+‏  const reel = zamzokReels[index];
+‏
+‏  const videoContainer =
+‏    zamzokReelsOverlay.querySelector('.zamzok-reels-video');
+‏
+‏  videoContainer.innerHTML = '';
+‏
+‏  const iframe = document.createElement('iframe');
+‏
+‏  iframe.src =
+‏    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(reel.id)}?autoplay=1&playsinline=1&rel=0`;
+‏
+‏  iframe.title = reel.title;
+‏
+‏  iframe.allow =
+‏    'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen';
+‏
+‏  iframe.setAttribute('allowfullscreen', '');
+‏  iframe.setAttribute('playsinline', '');
+‏
+‏  iframe.style.cssText = `
+‏    display:block;
+‏    width:100%;
+‏    height:100%;
+‏    border:0;
+‏    background:#000;
+‏  `;
+‏
+‏  videoContainer.appendChild(iframe);
+‏
+‏  zamzokReelsOverlay.querySelector('.zamzok-reels-title')
+‏    .textContent = reel.title;
+‏
+‏  zamzokReelsOverlay.querySelector('.zamzok-reels-counter')
+‏    .textContent = `${index + 1} / ${zamzokReels.length}`;
+‏
+‏  zamzokReelsOverlay.querySelector('.zamzok-reels-prev')
+‏    .disabled = index === 0;
+‏
+‏  zamzokReelsOverlay.querySelector('.zamzok-reels-next')
+‏    .disabled = index === zamzokReels.length - 1;
+‏}
+‏
+‏// ------------------------------
+‏// 13. إغلاق واجهة الريلز
+‏// ------------------------------
+‏
+‏function closeZamzokReels() {
+‏  if (!zamzokReelsOverlay) return;
+‏
+‏  zamzokReelsOverlay.classList.remove('is-open');
+‏
+‏  zamzokReelsOverlay.querySelector('.zamzok-reels-video')
+‏    .innerHTML = '';
+‏
+‏  document.body.classList.remove('zamzok-reels-active');
+‏
+‏  if (document.fullscreenElement) {
+‏    document.exitFullscreen().catch(() => {});
+‏  }
+‏}
+‏
+‏// ------------------------------
+‏// 14. ملء الشاشة
+‏// ------------------------------
+‏
+‏async function toggleZamzokFullscreen() {
+‏  if (!zamzokReelsOverlay) return;
+‏
+‏  try {
+‏    if (!document.fullscreenElement) {
+‏      await zamzokReelsOverlay.requestFullscreen();
+‏    } else {
+‏      await document.exitFullscreen();
+‏    }
+‏  } catch (error) {
+‏    zamzokReelsOverlay.classList.toggle('force-fullscreen');
+‏  }
+‏}
+‏
+‏// ------------------------------
+‏// 15. فتح الفيديو على YouTube
+‏// ------------------------------
+‏
+‏function openZamzokOnYouTube() {
+‏  const reel = zamzokReels[zamzokCurrentIndex];
+‏
+‏  if (!reel) return;
+‏
+‏  const url =
+‏    `https://www.youtube.com/watch?v=${encodeURIComponent(reel.id)}`;
+‏
+‏  window.open(url, '_blank', 'noopener,noreferrer');
+‏}
+‏
+‏// ------------------------------
+‏// 16. مشاركة الفيديو
+‏// ------------------------------
+‏
+‏async function shareZamzokReel() {
+‏  const reel = zamzokReels[zamzokCurrentIndex];
+‏
+‏  if (!reel) return;
+‏
+‏  const url =
+‏    `https://www.youtube.com/watch?v=${encodeURIComponent(reel.id)}`;
+‏
+‏  try {
+‏    if (navigator.share) {
+‏      await navigator.share({
+‏        title: reel.title,
+‏        text: 'شاهد الفيديو على ZAMZOK',
+‏        url
+‏      });
+‏    } else if (navigator.clipboard?.writeText) {
+‏      await navigator.clipboard.writeText(url);
+‏      alert('تم نسخ رابط الفيديو!');
+‏    } else {
+‏      window.prompt('انسخ رابط الفيديو:', url);
+‏    }
+‏  } catch (error) {
+‏    if (error.name !== 'AbortError') {
+‏      window.prompt('رابط الفيديو:', url);
+‏    }
+‏  }
+‏}
+‏
+‏// ------------------------------
+‏// 17. أزرار لوحة المفاتيح
+‏// ------------------------------
+‏
+‏function handleZamzokReelsKeyboard(event) {
+‏  if (!zamzokReelsOverlay?.classList.contains('is-open')) return;
+‏
+‏  if (event.key === 'Escape') {
+‏    closeZamzokReels();
+‏  }
+‏
+‏  if (event.key === 'ArrowUp') {
+‏    showZamzokReel(zamzokCurrentIndex + 1);
+‏  }
+‏
+‏  if (event.key === 'ArrowDown') {
+‏    showZamzokReel(zamzokCurrentIndex - 1);
+‏  }
+‏}
+‏
+‏// ------------------------------
+‏// 18. تشغيل الريلز عند الضغط على بطاقة
+‏// ------------------------------
+‏
+‏document.addEventListener('click', event => {
+‏  const button = event.target.closest('.zamzok-video-button');
+‏
+‏  if (!button) return;
+‏
+‏  event.preventDefault();
+‏
+‏  const index = Number(button.dataset.videoIndex);
+‏
+‏  openZamzokReels(Number.isInteger(index) ? index : 0);
+‏});
+‏
+‏// ------------------------------
+‏// 19. بدء تحميل الفيديوهات
+‏// ------------------------------
+‏
+‏if (document.readyState === 'loading') {
+‏  document.addEventListener('DOMContentLoaded', loadZamzokVideos);
+‏} else {
+‏  loadZamzokVideos();
+‏}
+‏
