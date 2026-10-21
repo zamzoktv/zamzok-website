@@ -4,25 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090711">
+  <meta name="color-scheme" content="dark">
+
   <meta
     name="description"
-    content="ZAMZOK — عالم من الكوميديا والمغامرات والرعب والقصص المصنوعة بالذكاء الاصطناعي."
+    content="ZAMZOK — ادخل عالم الكوميديا والمغامرات والرعب والقصص المصنوعة بالذكاء الاصطناعي. توقّع غير المتوقع!"
   >
+
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="ZAMZOK">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ZAMZOK | Expect the Unexpected">
+  <meta
+    property="og:description"
+    content="من الكوميديا للمغامرات والرعب والقصص بالذكاء الاصطناعي. اكتشف عالم ZAMZOK!"
+  >
+  <meta property="og:image" content="zamzok-banner.png">
+  <meta property="og:site_name" content="ZAMZOK">
+  <meta property="og:locale" content="ar_AR">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZAMZOK | Expect the Unexpected">
+  <meta
+    name="twitter:description"
+    content="عوالم من الكوميديا والمغامرات والرعب والقصص المصنوعة بالذكاء الاصطناعي."
+  >
+  <meta name="twitter:image" content="zamzok-banner.png">
 
   <title>ZAMZOK | Expect the Unexpected</title>
 
-  <link rel="icon" href="zamzok-logo.png">
+  <link rel="icon" type="image/png" href="zamzok-logo.png">
+  <link rel="apple-touch-icon" href="zamzok-logo.png">
   <link rel="stylesheet" href="styles.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 
 <body>
-  <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
+  <!-- Background Effects -->
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
 
   <!-- Header -->
   <header class="site-header">
-    <a class="brand" href="#home" aria-label="ZAMZOK الرئيسية">
-      <img src="zamzok-logo.png" alt="شعار ZAMZOK">
+    <a class="brand" href="#home" aria-label="ZAMZOK - الصفحة الرئيسية">
+      <img
+        src="zamzok-logo.png"
+        alt="شعار ZAMZOK"
+        width="49"
+        height="49"
+      >
       <span>ZAMZOK</span>
     </a>
 
@@ -35,7 +68,7 @@
       type="button"
     >☰</button>
 
-    <nav id="mainNav">
+    <nav id="mainNav" aria-label="القائمة الرئيسية">
       <a href="#home">الرئيسية</a>
       <a href="#videos">الفيديوهات</a>
       <a href="#categories">العوالم</a>
@@ -47,6 +80,7 @@
       href="https://www.youtube.com/@zamzoktv"
       target="_blank"
       rel="noopener noreferrer"
+      aria-label="اشترك في قناة ZAMZOK على يوتيوب"
     >▶ اشترك في القناة</a>
   </header>
 
@@ -59,11 +93,11 @@
         aria-label="عالم ZAMZOK الخيالي"
       ></div>
 
-      <div class="hero-shade"></div>
+      <div class="hero-shade" aria-hidden="true"></div>
 
       <div class="hero-content">
         <div class="eyebrow">
-          <span class="pulse"></span>
+          <span class="pulse" aria-hidden="true"></span>
           مرحبًا بك في عالم ZAMZOK
         </div>
 
@@ -76,7 +110,7 @@
 
         <div class="hero-actions">
           <a class="btn btn-gold" href="#videos">
-            اكتشف الفيديوهات <span>←</span>
+            اكتشف الفيديوهات <span aria-hidden="true">←</span>
           </a>
 
           <a
@@ -93,7 +127,7 @@
         </div>
       </div>
 
-      <div class="hero-stamp">
+      <div class="hero-stamp" aria-label="الخيال بلا حدود">
         <span>AI</span>
         <small>IMAGINATION<br>UNLEASHED</small>
       </div>
@@ -119,7 +153,7 @@
         <h2>▶ ZAMZOK PLAYER</h2>
 
         <p>
-          اختار الفيديو اللي تحب تشوفه، وشغّله داخل الموقع
+          اختار الفيديو اللي تحب تشوفه، وشغّله داخل الموقع.
         </p>
 
         <div
@@ -145,62 +179,62 @@
 
         <div class="world-grid">
 
-          <!-- Comedy Playlist -->
+          <!-- Comedy -->
           <a
             class="world world-comedy"
             href="#videos"
             data-zamzok-category="comedy"
             data-zamzok-playlist="PLZLykgsoIDIQ"
-            aria-label="استكشف فيديوهات كوميديا زامزوك"
+            aria-label="استكشف فيديوهات كوميديا ZAMZOK"
           >
-            <span class="world-symbol">😂</span>
+            <span class="world-symbol" aria-hidden="true">😂</span>
             <span class="world-en">COMEDY</span>
             <strong>الكوميديا</strong>
             <small>استعد للضحك</small>
-            <i>↙</i>
+            <i aria-hidden="true">↙</i>
           </a>
 
-          <!-- Adventure Playlist -->
+          <!-- Adventure -->
           <a
             class="world world-adventure"
             href="#videos"
             data-zamzok-category="adventure"
             data-zamzok-playlist="PLBB8ik23LpF0"
-            aria-label="استكشف مغامرات زامزوك"
+            aria-label="استكشف مغامرات ZAMZOK"
           >
-            <span class="world-symbol">🗺️</span>
+            <span class="world-symbol" aria-hidden="true">🗺️</span>
             <span class="world-en">ADVENTURE</span>
             <strong>المغامرات</strong>
             <small>كل خطوة حكاية</small>
-            <i>↙</i>
+            <i aria-hidden="true">↙</i>
           </a>
 
-          <!-- Horror: playlist will be added later -->
+          <!-- Horror -->
           <a
             class="world world-horror"
             href="#videos"
             data-zamzok-category="horror"
-            aria-label="عالم الرعب والغموض"
+            aria-label="استكشف عالم الرعب والغموض في ZAMZOK"
           >
-            <span class="world-symbol">👻</span>
+            <span class="world-symbol" aria-hidden="true">👻</span>
             <span class="world-en">HORROR</span>
             <strong>الرعب والغموض</strong>
             <small>هل تجرؤ على الدخول؟</small>
-            <i>↙</i>
+            <i aria-hidden="true">↙</i>
           </a>
 
-          <!-- Stories: playlist will be added later -->
+          <!-- Stories -->
           <a
             class="world world-stories"
             href="#videos"
             data-zamzok-category="stories"
-            aria-label="عالم القصص"
+            aria-label="استكشف قصص ZAMZOK"
           >
-            <span class="world-symbol">📖</span>
+            <span class="world-symbol" aria-hidden="true">📖</span>
             <span class="world-en">STORIES</span>
             <strong>القصص</strong>
             <small>نهايات لا تتوقعها</small>
-            <i>↙</i>
+            <i aria-hidden="true">↙</i>
           </a>
 
         </div>
@@ -210,7 +244,13 @@
     <!-- About and Subscribe -->
     <section class="join-section" id="about">
       <div class="join-logo">
-        <img src="zamzok-logo.png" alt="شعار ZAMZOK">
+        <img
+          src="zamzok-logo.png"
+          alt="شعار ZAMZOK"
+          width="105"
+          height="105"
+          loading="lazy"
+        >
       </div>
 
       <div class="join-content">
@@ -242,7 +282,9 @@
 
   <!-- Footer -->
   <footer>
-    <a class="footer-brand" href="#home">ZAMZOK</a>
+    <a class="footer-brand" href="#home" aria-label="العودة إلى أعلى الصفحة">
+      ZAMZOK
+    </a>
 
     <span>EXPECT THE UNEXPECTED</span>
 
