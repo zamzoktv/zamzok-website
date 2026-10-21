@@ -1,3 +1,8 @@
+/* ==================================================
+   ZAMZOK WEBSITE — COMPLETE STYLES.CSS
+   Black & Gold Identity + Responsive Reels Interface
+================================================== */
+
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@500;700;800;900&display=swap');
 
 :root {
@@ -33,10 +38,17 @@ a {
   text-decoration: none;
 }
 
-button,
-input {
+button {
   font: inherit;
 }
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* Background Effects */
 
 .ambient {
   position: fixed;
@@ -132,7 +144,7 @@ nav a:hover {
   cursor: pointer;
 }
 
-/* Hero */
+/* Hero Section */
 
 .hero {
   min-height: 570px;
@@ -153,7 +165,6 @@ nav a:hover {
 
 .hero-art {
   background: url('zamzok-banner.png') center / cover no-repeat;
-  filter: saturate(1.1);
 }
 
 .hero-shade {
@@ -184,7 +195,6 @@ nav a:hover {
   color: var(--gold);
   font-size: 13px;
   font-weight: 800;
-  letter-spacing: .5px;
 }
 
 .eyebrow {
@@ -303,7 +313,7 @@ h1 span,
   line-height: 1.5;
 }
 
-/* General sections */
+/* General Sections */
 
 .section {
   padding: 75px 7%;
@@ -334,7 +344,7 @@ h1 span,
   color: #fff0a6;
 }
 
-/* ZAMZOK video player */
+/* Video Grid */
 
 .zamzok-player {
   padding: 25px;
@@ -409,23 +419,13 @@ h1 span,
 }
 
 .zamzok-video-button span {
-  position: relative;
+  display: block;
+  padding: 12px;
+  text-align: center;
+  color: var(--gold);
   background: linear-gradient(90deg, #171020, #21132c);
   border-top: 1px solid #ffcf5530;
-}
-
-.zamzok-video-button:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: -3px;
-}
-
-.zamzok-video-card iframe {
-  display: block;
-  width: 100%;
-  aspect-ratio: 9 / 16;
-  border: 0;
-  border-radius: 15px;
-  background: #090711;
+  font-weight: 800;
 }
 
 .video-info {
@@ -440,74 +440,12 @@ h1 span,
   overflow-wrap: anywhere;
 }
 
-.video-info p {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.8;
-}
-
 .video-grid > p {
   grid-column: 1 / -1;
   text-align: center;
   color: var(--gold);
   line-height: 2;
   padding: 20px;
-}
-
-.video-thumb {
-  height: 205px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.video-thumb:before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 45%, #ffffff17, transparent 45%);
-}
-
-.thumb-pyramid {
-  background: linear-gradient(135deg, #5a230b, #f7a82f 46%, #32134e);
-}
-
-.thumb-horror {
-  background: linear-gradient(135deg, #060b1b, #2a1750 52%, #0d3150);
-}
-
-.thumb-comedy {
-  background: linear-gradient(135deg, #38116c, #fa8c34 60%, #fbd55d);
-}
-
-.thumb-icon {
-  font-size: 70px;
-  filter: drop-shadow(0 0 20px #ffcb5d99);
-}
-
-.card-label {
-  position: absolute;
-  right: 13px;
-  bottom: 13px;
-  padding: 5px 10px;
-  background: #090711bd;
-  border: 1px solid #ffffff2b;
-  border-radius: 6px;
-  font-size: 11px;
-}
-
-.category {
-  font: 700 10px 'Orbitron', sans-serif;
-  letter-spacing: 1.5px;
-  color: #bd8cff;
-}
-
-.note {
-  font-size: 11px;
-  color: #827b91;
-  margin-top: 17px;
 }
 
 /* Worlds */
@@ -617,7 +555,7 @@ h1 span,
   font-style: normal;
 }
 
-/* Join section */
+/* Subscribe Section */
 
 .join-section {
   margin: 65px 7%;
@@ -686,6 +624,297 @@ footer > span {
 footer small {
   margin-right: auto;
   font-size: 11px;
+}
+
+/* ==================================================
+   ZAMZOK REELS — FULLSCREEN INTERFACE
+================================================== */
+
+body.zamzok-reels-active {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.zamzok-reels-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: #050407;
+  color: #fff;
+  overflow: hidden;
+  isolation: isolate;
+  font-family: 'Cairo', sans-serif;
+  touch-action: pan-y;
+}
+
+.zamzok-reels-overlay.is-open {
+  display: flex;
+  flex-direction: column;
+}
+
+.zamzok-reels-header {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    12px
+    max(16px, env(safe-area-inset-left));
+  background: linear-gradient(#000c, transparent);
+}
+
+.zamzok-reels-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+.zamzok-reels-brand small {
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.zamzok-reels-brand-icon {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 15px #ffcf5530;
+}
+
+.zamzok-reels-close,
+.zamzok-reels-fullscreen {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #ffffff35;
+  border-radius: 50%;
+  background: #090711b8;
+  color: #fff;
+  font-size: 23px;
+  cursor: pointer;
+}
+
+.zamzok-reels-fullscreen {
+  color: var(--gold);
+  font-size: 28px;
+}
+
+.zamzok-reels-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #050407;
+  touch-action: pan-y;
+}
+
+.zamzok-reels-video {
+  position: relative;
+  width: min(100%, 500px);
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+.zamzok-reels-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+.zamzok-reels-actions {
+  position: absolute;
+  z-index: 5;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: 125px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.zamzok-reels-action {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 48px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #fff;
+  text-decoration: none;
+  font-family: 'Cairo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-shadow: 0 1px 5px #000;
+}
+
+.zamzok-reels-action-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #ffffff55;
+  border-radius: 50%;
+  background: #090711b8;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 28px;
+  transition: transform .2s, color .2s;
+}
+
+.zamzok-reels-action:active .zamzok-reels-action-icon {
+  transform: scale(.9);
+  color: var(--gold);
+}
+
+.zamzok-reels-avatar {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #20122c, #090711);
+  color: var(--gold);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.zamzok-reels-plus {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #090711;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.zamzok-reels-bottom {
+  position: absolute;
+  z-index: 4;
+  right: 16px;
+  left: 85px;
+  bottom: max(25px, env(safe-area-inset-bottom));
+  padding: 12px 0;
+  pointer-events: none;
+  text-shadow: 0 2px 7px #000;
+}
+
+.zamzok-reels-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zamzok-reels-name {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.zamzok-reels-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+}
+
+.zamzok-reels-title {
+  margin: 8px 0;
+  font-size: 15px;
+  line-height: 1.8;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.zamzok-reels-hint {
+  margin: 0;
+  color: #ffffffc9;
+  font-size: 11px;
+}
+
+.zamzok-reels-nav {
+  position: absolute;
+  z-index: 7;
+  left: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 42px;
+  border: 1px solid #ffffff45;
+  border-radius: 24px;
+  background: #0009;
+  color: var(--gold);
+  font-size: 27px;
+  cursor: pointer;
+}
+
+.zamzok-reels-prev {
+  top: 44%;
+}
+
+.zamzok-reels-next {
+  top: 53%;
+}
+
+.zamzok-reels-nav:disabled {
+  opacity: .25;
+  cursor: default;
+}
+
+.zamzok-reels-counter {
+  position: absolute;
+  z-index: 10;
+  top: 65px;
+  left: 16px;
+  color: var(--gold);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  text-shadow: 0 2px 5px #000;
+  pointer-events: none;
+}
+
+.zamzok-reels-overlay:fullscreen,
+.zamzok-reels-overlay.force-fullscreen {
+  width: 100%;
+  height: 100%;
+  background: #000;
 }
 
 /* Tablet */
@@ -812,7 +1041,12 @@ footer small {
   }
 
   .hero-shade {
-    background: linear-gradient(0deg, #090711 0%, rgba(9, 7, 17, .91) 32%, rgba(9, 7, 17, .28) 100%);
+    background: linear-gradient(
+      0deg,
+      #090711 0%,
+      rgba(9, 7, 17, .91) 32%,
+      rgba(9, 7, 17, .28) 100%
+    );
   }
 
   .hero-content {
@@ -889,12 +1123,8 @@ footer small {
     line-height: 1.8;
   }
 
-  .zamzok-video-button img {
-    aspect-ratio: 9 / 16;
-  }
-
   .zamzok-video-button span {
-    padding: 9px !important;
+    padding: 9px;
     font-size: 12px;
   }
 
@@ -956,6 +1186,51 @@ footer small {
   footer > span {
     font-size: 8px;
   }
+
+  /* Reels mobile */
+
+  .zamzok-reels-video {
+    width: 100%;
+    height: 100%;
+  }
+
+  .zamzok-reels-actions {
+    right: max(9px, env(safe-area-inset-right));
+    bottom: 120px;
+    gap: 18px;
+  }
+
+  .zamzok-reels-action-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 25px;
+  }
+
+  .zamzok-reels-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .zamzok-reels-bottom {
+    right: 12px;
+    left: 67px;
+    bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .zamzok-reels-title {
+    font-size: 13px;
+  }
+
+  .zamzok-reels-nav {
+    left: 5px;
+    width: 30px;
+    height: 38px;
+  }
+
+  .zamzok-reels-counter {
+    top: 65px;
+    left: 12px;
+  }
 }
 
 /* Small phones */
@@ -980,5 +1255,13 @@ footer small {
 
   .hero-actions .btn {
     width: 100%;
+  }
+
+  .zamzok-reels-actions {
+    gap: 14px;
+  }
+
+  .zamzok-reels-action {
+    font-size: 10px;
   }
 }
