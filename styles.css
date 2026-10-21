@@ -889,20 +889,37 @@ body.zamzok-reels-active {
   background: #000;
 }
 
+/* ==================================================
+   SWIPE LAYER — FIXED
+================================================== */
+
 /*
-   Swipe layer:
-   Keep it transparent and non-interactive so it does not block
-   YouTube playback controls or the reel action buttons.
-   Swipe detection must be handled by script.js.
+  استقبال اللمس مطلوب لتشغيل السحب.
+  أزرار التحكم موضوعة فوق هذه الطبقة.
 */
 
 .zamzok-reels-swipe-layer {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 5;
+  display: block;
   background: transparent;
-  pointer-events: none !important;
-  touch-action: pan-x;
+
+  /* إصلاح منع استقبال اللمس */
+  pointer-events: auto !important;
+
+  /* السماح لكود JavaScript بالتقاط حركة الإصبع */
+  touch-action: none;
+
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  cursor: grab;
+}
+
+.zamzok-reels-swipe-layer:active {
+  cursor: grabbing;
 }
 
 /* Reel actions */
@@ -1592,25 +1609,83 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   15. TOUCH AND SWIPE SUPPORT
+   15. TOUCH AND SWIPE SUPPORT — FIXED
 ================================================== */
 
-.zamzok-reels-video,
-.zamzok-reels-stage {
+/* تحسين استقبال اللمس داخل مشغل الريلز */
+#zamzokReelsOverlay .zamzok-reels-stage {
+  position: relative;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/*
-  Important:
-  CSS cannot detect a vertical swipe by itself.
-  script.js must listen for touchstart/touchend or pointer events
-  and trigger the previous/next reel.
-*/
+/* فيديو YouTube */
+#zamzokReelsOverlay .zamzok-reels-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
 
-.zamzok-reels-actions,
-.zamzok-reels-nav,
-.zamzok-reels-header {
+/* طبقة استقبال السحب */
+#zamzokReelsOverlay .zamzok-reels-swipe-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: block;
+  background: transparent;
+
+  /* إصلاح المشكلة الأساسية */
+  pointer-events: auto !important;
+
+  /* التقاط السحب عبر JavaScript */
+  touch-action: none;
+
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  cursor: grab;
+}
+
+#zamzokReelsOverlay .zamzok-reels-swipe-layer:active {
+  cursor: grabbing;
+}
+
+/* إبقاء أزرار التحكم فوق طبقة السحب */
+#zamzokReelsOverlay .zamzok-reels-header {
+  z-index: 30;
+}
+
+#zamzokReelsOverlay .zamzok-reels-actions {
+  z-index: 20;
+  pointer-events: auto;
   touch-action: manipulation;
+}
+
+#zamzokReelsOverlay .zamzok-reels-nav {
+  z-index: 25;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+#zamzokReelsOverlay .zamzok-reels-bottom {
+  z-index: 15;
+  pointer-events: none;
+}
+
+#zamzokReelsOverlay .zamzok-reels-counter {
+  z-index: 30;
+  pointer-events: none;
+}
+
+/* منع تمرير الصفحة خلف مشغل الريلز */
+body.zamzok-reels-active {
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 /* ==================================================
