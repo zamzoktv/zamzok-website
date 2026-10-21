@@ -1,3 +1,8 @@
+// ==========================================
+// ZAMZOK WEBSITE - SCRIPT.JS
+// ==========================================
+
+// إعدادات القائمة
 const toggle = document.getElementById('menuToggle');
 const nav = document.getElementById('mainNav');
 
@@ -17,139 +22,219 @@ if (toggle && nav) {
   });
 }
 
+// السنة الحالية
 const year = document.getElementById('year');
-if (year) {
-  year.textContent = new Date().getFullYear();
-}
+if (year) year.textContent = new Date().getFullYear();
 
+// ==========================================
 // إعدادات قناة ZAMZOK
-const YOUTUBE_API_KEY = 'YOUR_API_KEY';
+// ==========================================
+
+const YOUTUBE_API_KEY = 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo';
 const YOUTUBE_CHANNEL_ID = 'UCNuIyleVU-8sXQFDitaKiSg';
 const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
 
-// قائمة فيديوهات القناة
-async function loadZamzokVideos() {
-  const grid = document.getElementById('videoGrid');
+// ==========================================
+// أدوات مساعدة
+// ==========================================
 
-  if (!grid) return;
-
-  grid.innerHTML = '<p>جاري تحميل فيديوهات ZAMZOK...</p>';
-
-  try {
-    // الحصول على قائمة الفيديوهات المرفوعة للقناة
-    const channelResponse = await fetch(
-      `${YOUTUBE_API_URL}/channels?part=contentDetails&id=${YOUTUBE_CHANNEL_ID}&key=${YOUTUBE_API_KEY}`
-    );
-
-    if (!channelResponse.ok) {
-      throw new Error('تعذر الوصول إلى بيانات القناة');
-    }
-
-    const channelData = await channelResponse.json();
-
-    if (!channelData.items || !channelData.items.length) {
-      throw new Error('لم يتم العثور على القناة. راجع معرّف القناة.');
-    }
-
-    const uploadsPlaylist =
-      channelData.items[0].contentDetails.relatedPlaylists.uploads;
-
-    let videos = [];
-    let pageToken = '';
-
-    // تحميل جميع صفحات الفيديوهات
-    do {
-      const params = new URLSearchParams({
-        part: 'snippet,contentDetails',
-        playlistId: uploadsPlaylist,
-        maxResults: '50',
-        key: YOUTUBE_API_KEY
-      });
-
-      if (pageToken) {
-        params.set('pageToken', pageToken);
-      }
-
-      const response = await fetch(
-        `${YOUTUBE_API_URL}/playlistItems?${params.toString()}`
-      );
-
-      if (!response.ok) {
-        throw new Error('فشل تحميل قائمة الفيديوهات');
-      }
-
-      const data = await response.json();
-
-      videos.push(...(data.items || []));
-      pageToken = data.nextPageToken || '';
-
-    } while (pageToken);
-
-    if (!videos.length) {
-      grid.innerHTML = '<p>لا توجد فيديوهات متاحة حاليًا.</p>';
-      return;
-    }
-
-    // عرض الفيديوهات كبطاقات قابلة للتشغيل
-    grid.innerHTML = videos.map(video => {
-      const id = video.contentDetails.videoId;
-      const title = video.snippet.title;
-      const safeTitle = escapeHTML(title);
-      const thumbnail =
-        video.snippet.thumbnails.high?.url ||
-        video.snippet.thumbnails.medium?.url ||
-        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-
-      return `
-        <article class="zamzok-video-card">
-          <button
-            class="zamzok-video-button"
-            type="button"
-            data-video-id="${id}"
-            aria-label="تشغيل ${safeTitle}"
-            style="display:block;width:100%;padding:0;border:0;background:#090711;color:white;cursor:pointer;border-radius:15px;overflow:hidden;"
-          >
-            <img
-              src="${thumbnail}"
-              alt="${safeTitle}"
-              loading="lazy"
-              style="display:block;width:100%;aspect-ratio:9/16;object-fit:cover;"
-            >
-            <span style="display:block;padding:12px;text-align:center;">
-              ▶ شاهد الفيديو
-            </span>
-          </button>
-          <h3>${safeTitle}</h3>
-        </article>
-      `;
-    }).join('');
-
-  } catch (error) {
-    console.error('ZAMZOK videos error:', error);
-
-    grid.innerHTML = `
-      <p style="color:#ffd700;text-align:center;">
-        تعذر تحميل الفيديوهات: ${escapeHTML(error.message)}
-      </p>
-    `;
-  }
-}
-
-// حماية النصوص المعروضة داخل HTML
 function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, character => ({
+  return String(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  })[character]);
+  })[char]);
 }
 
-// تشغيل الفيديو داخل البطاقة نفسها
+function showVideoMessage(message) {
+  const grid = document.getElementById('videoGrid');
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <p style="
+      color:#ffcf55;
+      text-align:center;
+      padding:20px;
+      grid-column:1/-1;
+      line-height:2;
+    ">${escapeHTML(message)}</p>
+  `;
+}
+
+// ==========================================
+// الاتصال بواجهة YouTube API
+// ==========================================
+
+async function youtubeRequest(endpoint, params = {}) {
+  const url = new URL(`${YOUTUBE_API_URL}/${endpoint}`);
+
+  Object.entries({
+    ...params,
+    key: YOUTUBE_API_KEY
+  }).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (!response.ok) {
+    const reason = data?.error?.errors?.[0]?.reason;
+
+    if (reason === 'quotaExceeded') {
+      throw new Error('انتهت الحصة اليومية المسموحة لواجهة YouTube API.');
+    }
+
+    if (reason === 'keyInvalid') {
+      throw new Error('مفتاح YouTube API غير صحيح.');
+    }
+
+    if (response.status === 403) {
+      throw new Error(
+        'رفض يوتيوب الطلب. تأكد من تفعيل YouTube Data API v3 وإعدادات المفتاح.'
+      );
+    }
+
+    throw new Error(
+      data?.error?.message || `حدث خطأ أثناء الاتصال بيوتيوب (${response.status}).`
+    );
+  }
+
+  return data;
+}
+
+// ==========================================
+// تحميل جميع فيديوهات القناة
+// ==========================================
+
+async function loadZamzokVideos() {
+  const grid = document.getElementById('videoGrid');
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <p style="color:#ffcf55;text-align:center;grid-column:1/-1;">
+      جاري تحميل فيديوهات ZAMZOK...
+    </p>
+  `;
+
+  try {
+    // جلب قائمة الفيديوهات المرفوعة للقناة
+    const channelData = await youtubeRequest('channels', {
+      part: 'contentDetails',
+      id: YOUTUBE_CHANNEL_ID
+    });
+
+    if (!channelData.items?.length) {
+      throw new Error('لم يتم العثور على القناة. تحقق من معرّف القناة.');
+    }
+
+    const uploadsPlaylist =
+      channelData.items[0].contentDetails.relatedPlaylists.uploads;
+
+    const videos = [];
+    let pageToken = '';
+
+    // تحميل صفحات قائمة الفيديوهات
+    do {
+      const params = {
+        part: 'snippet,contentDetails',
+        playlistId: uploadsPlaylist,
+        maxResults: '50'
+      };
+
+      if (pageToken) params.pageToken = pageToken;
+
+      const playlistData = await youtubeRequest('playlistItems', params);
+
+      videos.push(...(playlistData.items || []));
+      pageToken = playlistData.nextPageToken || '';
+    } while (pageToken);
+
+    if (!videos.length) {
+      showVideoMessage('لا توجد فيديوهات متاحة حاليًا.');
+      return;
+    }
+
+    // إنشاء بطاقات الفيديوهات
+    grid.innerHTML = videos.map(video => {
+      const id = video.contentDetails?.videoId;
+      if (!id) return '';
+
+      const title = video.snippet?.title || 'فيديو ZAMZOK';
+      const thumbnails = video.snippet?.thumbnails || {};
+
+      const thumbnail =
+        thumbnails.maxres?.url ||
+        thumbnails.high?.url ||
+        thumbnails.medium?.url ||
+        thumbnails.default?.url ||
+        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+      return `
+        <article class="video-card zamzok-video-card">
+          <button
+            class="zamzok-video-button"
+            type="button"
+            data-video-id="${escapeHTML(id)}"
+            aria-label="تشغيل ${escapeHTML(title)}"
+            style="
+              display:block;
+              width:100%;
+              padding:0;
+              border:0;
+              background:#090711;
+              color:white;
+              cursor:pointer;
+              overflow:hidden;
+              text-align:right;
+            "
+          >
+            <img
+              src="${escapeHTML(thumbnail)}"
+              alt="${escapeHTML(title)}"
+              loading="lazy"
+              style="
+                display:block;
+                width:100%;
+                aspect-ratio:9/16;
+                object-fit:cover;
+              "
+            >
+
+            <span style="
+              display:block;
+              padding:12px;
+              text-align:center;
+              color:#ffcf55;
+              font-weight:bold;
+            ">▶ تشغيل الفيديو</span>
+          </button>
+
+          <div class="video-info">
+            <h3>${escapeHTML(title)}</h3>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    if (!grid.querySelector('.zamzok-video-card')) {
+      showVideoMessage('لم يتم العثور على فيديوهات قابلة للعرض.');
+    }
+
+  } catch (error) {
+    console.error('ZAMZOK YouTube API error:', error);
+    showVideoMessage(`تعذر تحميل الفيديوهات: ${error.message}`);
+  }
+}
+
+// ==========================================
+// تشغيل الفيديو داخل الموقع
+// ==========================================
+
 document.addEventListener('click', event => {
   const button = event.target.closest('.zamzok-video-button');
-
   if (!button) return;
 
   const videoId = button.dataset.videoId;
@@ -166,10 +251,26 @@ document.addEventListener('click', event => {
   iframe.allow =
     'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   iframe.allowFullscreen = true;
-  iframe.style.cssText =
-    'display:block;width:100%;aspect-ratio:9/16;border:0;border-radius:15px;';
+  iframe.loading = 'lazy';
 
-  card.querySelector('.zamzok-video-button').replaceWith(iframe);
+  iframe.style.cssText = `
+    display:block;
+    width:100%;
+    aspect-ratio:9/16;
+    border:0;
+    border-radius:15px;
+    background:#090711;
+  `;
+
+  button.replaceWith(iframe);
 });
 
-document.addEventListener('DOMContentLoaded', loadZamzokVideos);
+// ==========================================
+// بدء التشغيل
+// ==========================================
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadZamzokVideos);
+} else {
+  loadZamzokVideos();
+}
