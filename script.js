@@ -1,7 +1,7 @@
 // ==================================================
 // ZAMZOK WEBSITE — SCRIPT.JS
-// Separate Shorts/Reels and Normal YouTube Videos
-// Categories + Playlists + Vertical Swipe Player
+// YouTube Videos + Playlists + Reels
+// Tap to Play/Pause + Vertical Swipe
 // ==================================================
 
 'use strict';
@@ -11,17 +11,11 @@
 // ==================================================
 
 const ZAMZOK_CONFIG = {
-  // استبدل القيمة بمفتاح API جديد ومقيّد.
   apiKey: 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo',
 
   channelId: 'UCNuIyleVU-8sXQFDitaKiSg',
   channelUrl: 'https://www.youtube.com/@zamzoktv',
   apiUrl: 'https://www.googleapis.com/youtube/v3',
-
-  // YouTube Shorts قد تصل مدتها إلى 3 دقائق.
-  // التصنيف بالمدة تقريبي، لأن المدة وحدها لا تحدد
-  // بصورة مؤكدة ما إذا كان الفيديو Short أم فيديو عاديًا.
-  maxShortDurationSeconds: 180,
 
   playlists: [
     {
@@ -61,26 +55,20 @@ const ZAMZOK_CONFIG = {
 
 let zamzokVideos = [];
 let zamzokReels = [];
-let zamzokNormalVideos = [];
-
 let zamzokCurrentIndex = 0;
 let zamzokCurrentSource = 'all';
-let zamzokCurrentReelsCategory = 'all';
-
 let zamzokReelsOverlay = null;
-let zamzokLoadingPromise = null;
-let zamzokPlaylistLoading = new Map();
 
-let zamzokPreviousScroll = 0;
 let zamzokHistoryActive = false;
+let zamzokPreviousScroll = 0;
+let zamzokLoadingPromise = null;
+let zamzokSelectionRequest = 0;
 
 let zamzokYTPlayer = null;
 let zamzokYTApiPromise = null;
 let zamzokPlayerRequest = 0;
 let zamzokPlayerReady = false;
 let zamzokPlayerTapBusy = false;
-
-let zamzokIndicatorTimer = null;
 
 const zamzokPlaylistCache = new Map();
 
@@ -108,19 +96,13 @@ function getPlaylistByType(type) {
   );
 }
 
-function getReelsGrid() {
-  return document.getElementById('zamzokReelsGrid');
-}
+function showVideoMessage(message) {
+  const grid = document.getElementById('videoGrid');
 
-function getNormalGrid() {
-  return document.getElementById('videoGrid');
-}
-
-function showGridMessage(grid, message) {
   if (!grid) return;
 
   grid.setAttribute('aria-busy', 'false');
-  grid.replaceChildren();
+  grid.innerHTML = '';
 
   const paragraph = document.createElement('p');
 
@@ -128,48 +110,6 @@ function showGridMessage(grid, message) {
   paragraph.textContent = message;
 
   grid.appendChild(paragraph);
-}
-
-function showVideoMessage(message) {
-  showGridMessage(getNormalGrid(), message);
-}
-
-function showReelsMessage(message) {
-  showGridMessage(getReelsGrid(), message);
-}
-
-function scrollToVideos() {
-  document.getElementById('videos')?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-  });
-}
-
-function formatDuration(isoDuration) {
-  if (!isoDuration) return 0;
-
-  const match = isoDuration.match(
-    /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
-  );
-
-  if (!match) return 0;
-
-  const hours = Number(match[1] || 0);
-  const minutes = Number(match[2] || 0);
-  const seconds = Number(match[3] || 0);
-
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
-function getThumbnail(thumbnails, videoId) {
-  return (
-    thumbnails?.maxres?.url ||
-    thumbnails?.standard?.url ||
-    thumbnails?.high?.url ||
-    thumbnails?.medium?.url ||
-    thumbnails?.default?.url ||
-    `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`
-  );
 }
 
 function normalizeVideo(item, source = 'all') {
@@ -180,14 +120,8 @@ function normalizeVideo(item, source = 'all') {
 
   if (!id) return null;
 
-  const playlist = getPlaylistByType(source);
-
   const thumbnails = item?.snippet?.thumbnails || {};
-
-  const durationISO =
-    item?.contentDetails?.duration || '';
-
-  const durationSeconds = formatDuration(durationISO);
+  const playlist = getPlaylistByType(source);
 
   return {
     id,
@@ -196,42 +130,36 @@ function normalizeVideo(item, source = 'all') {
       item?.snippet?.title ||
       'فيديو ZAMZOK',
 
-    description:
-      item?.snippet?.description || '',
-
-    thumbnail: getThumbnail(thumbnails, id),
+    thumbnail:
+      thumbnails.maxres?.url ||
+      thumbnails.high?.url ||
+      thumbnails.medium?.url ||
+      thumbnails.standard?.url ||
+      thumbnails.default?.url ||
+      `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`,
 
     publishedAt:
       item?.contentDetails?.videoPublishedAt ||
       item?.snippet?.publishedAt ||
       '',
 
-    durationISO,
-    durationSeconds,
-
     source,
 
     playlistName: playlist?.name || '',
+
     playlistArabicName: playlist?.arabicName || ''
   };
 }
 
-function uniqueVideos(videos) {
-  const seen = new Set();
-
-  return videos.filter(video => {
-    if (!video || !video.id || seen.has(video.id)) {
-      return false;
-    }
-
-    seen.add(video.id);
-
-    return true;
+function scrollToVideos() {
+  document.getElementById('videos')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
   });
 }
 
 // ==================================================
-// 4. MENU AND FOOTER
+// 4. MAIN MENU
 // ==================================================
 
 function initializeMainMenu() {
@@ -239,13 +167,6 @@ function initializeMainMenu() {
   const nav = document.getElementById('mainNav');
 
   if (!toggle || !nav) return;
-
-  // منع تسجيل الأحداث مرتين.
-  if (toggle.dataset.zamzokInitialized === 'true') {
-    return;
-  }
-
-  toggle.dataset.zamzokInitialized = 'true';
 
   toggle.setAttribute('aria-expanded', 'false');
 
@@ -267,8 +188,7 @@ function initializeMainMenu() {
 }
 
 function initializeYear() {
-  const year = document.getElementById('currentYear')
-    || document.getElementById('year');
+  const year = document.getElementById('year');
 
   if (year) {
     year.textContent = new Date().getFullYear();
@@ -284,7 +204,7 @@ async function youtubeRequest(endpoint, params = {}) {
 
   if (
     !key ||
-    key === 'PUT_YOUR_RESTRICTED_API_KEY_HERE'
+    key === 'PUT_YOUR_NEW_API_KEY_HERE'
   ) {
     throw new Error(
       'أضف مفتاح YouTube API الجديد داخل script.js.'
@@ -355,77 +275,6 @@ async function youtubeRequest(endpoint, params = {}) {
   return data;
 }
 
-// ==================================================
-// 6. GET VIDEO DURATIONS
-// ==================================================
-
-async function enrichVideoDetails(videos) {
-  if (!videos.length) return videos;
-
-  const result = [];
-
-  // YouTube videos.list يقبل حتى 50 معرف فيديو في الطلب.
-  for (let i = 0; i < videos.length; i += 50) {
-    const batch = videos.slice(i, i + 50);
-
-    try {
-      const data = await youtubeRequest('videos', {
-        part: 'contentDetails,snippet',
-        id: batch.map(video => video.id).join(',')
-      });
-
-      const detailsById = new Map(
-        (data.items || []).map(item => [item.id, item])
-      );
-
-      batch.forEach(video => {
-        const details = detailsById.get(video.id);
-
-        if (!details) {
-          result.push(video);
-          return;
-        }
-
-        const durationISO =
-          details.contentDetails?.duration || '';
-
-        const durationSeconds =
-          formatDuration(durationISO);
-
-        result.push({
-          ...video,
-
-          durationISO,
-
-          durationSeconds,
-
-          title:
-            details.snippet?.title ||
-            video.title,
-
-          thumbnail: getThumbnail(
-            details.snippet?.thumbnails,
-            video.id
-          )
-        });
-      });
-    } catch (error) {
-      console.warn(
-        'تعذر تحميل مدد الفيديوهات؛ سيتم استخدام البيانات المتاحة.',
-        error
-      );
-
-      result.push(...batch);
-    }
-  }
-
-  return result;
-}
-
-// ==================================================
-// 7. FETCH PLAYLIST VIDEOS
-// ==================================================
-
 async function fetchPlaylistVideos(playlist) {
   if (!playlist?.id) {
     throw new Error(
@@ -442,18 +291,10 @@ async function fetchPlaylistVideos(playlist) {
     }
   );
 
-  const videos = uniqueVideos(
-    (data.items || [])
-      .map(item => normalizeVideo(item, playlist.type))
-      .filter(Boolean)
-  );
-
-  return enrichVideoDetails(videos);
+  return (data.items || [])
+    .map(item => normalizeVideo(item, playlist.type))
+    .filter(Boolean);
 }
-
-// ==================================================
-// 8. FETCH CHANNEL VIDEOS
-// ==================================================
 
 async function fetchChannelVideos() {
   const channelData = await youtubeRequest(
@@ -490,49 +331,27 @@ async function fetchChannelVideos() {
     }
   );
 
-  const videos = uniqueVideos(
-    (data.items || [])
-      .map(item => normalizeVideo(item, 'all'))
-      .filter(Boolean)
-  );
+  const seen = new Set();
 
-  return enrichVideoDetails(videos);
+  return (data.items || [])
+    .map(item => normalizeVideo(item, 'all'))
+    .filter(video => {
+      if (!video || seen.has(video.id)) {
+        return false;
+      }
+
+      seen.add(video.id);
+
+      return true;
+    });
 }
 
 // ==================================================
-// 9. SPLIT SHORTS AND NORMAL VIDEOS
-// ==================================================
-
-function splitChannelVideos(videos) {
-  const shorts = [];
-  const normal = [];
-
-  videos.forEach(video => {
-    // التصنيف حسب المدة تقريبي وليس تأكيدًا من YouTube
-    // بأن الفيديو منشور فعلًا بصيغة Shorts.
-    if (
-      video.durationSeconds > 0 &&
-      video.durationSeconds <=
-        ZAMZOK_CONFIG.maxShortDurationSeconds
-    ) {
-      shorts.push(video);
-    } else {
-      normal.push(video);
-    }
-  });
-
-  return {
-    shorts,
-    normal
-  };
-}
-
-// ==================================================
-// 10. NORMAL VIDEO PLAYLIST CONTROLS
+// 6. PLAYLIST CONTROLS
 // ==================================================
 
 function createPlaylistControls() {
-  const grid = getNormalGrid();
+  const grid = document.getElementById('videoGrid');
 
   if (!grid?.parentNode) return;
 
@@ -572,6 +391,69 @@ function createPlaylistControls() {
     >${escapeHTML(source.label)}</button>
   `).join('');
 
+  if (!document.getElementById('zamzokPlaylistStyles')) {
+    const style = document.createElement('style');
+
+    style.id = 'zamzokPlaylistStyles';
+
+    style.textContent = `
+      .zamzok-playlist-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin: 22px 0;
+      }
+
+      .zamzok-playlist-btn {
+        border: 1px solid #ffcf5540;
+        border-radius: 12px;
+        padding: 11px 15px;
+        background: #171020;
+        color: #fff9ed;
+        font: 700 13px 'Cairo', sans-serif;
+        cursor: pointer;
+        transition:
+          background .2s,
+          color .2s,
+          border-color .2s;
+      }
+
+      .zamzok-playlist-btn:hover,
+      .zamzok-playlist-btn.is-active {
+        color: #160e02;
+        border-color: #ffcf55;
+        background: linear-gradient(
+          120deg,
+          #ffe78c,
+          #ffad2e
+        );
+      }
+
+      .zamzok-message {
+        grid-column: 1 / -1;
+        width: 100%;
+        text-align: center;
+        color: #ffcf55;
+        line-height: 2;
+        padding: 24px;
+      }
+
+      @media (max-width: 650px) {
+        .zamzok-playlist-controls {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .zamzok-playlist-btn {
+          width: 100%;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
   controls.querySelectorAll('[data-source]').forEach(button => {
     button.addEventListener('click', () => {
       setActivePlaylist(button.dataset.source);
@@ -586,33 +468,21 @@ function updatePlaylistButtons(source) {
     const active = button.dataset.source === source;
 
     button.classList.toggle('is-active', active);
-
-    button.setAttribute(
-      'aria-pressed',
-      String(active)
-    );
+    button.setAttribute('aria-pressed', String(active));
   });
 }
 
-// ==================================================
-// 11. LOAD A PLAYLIST
-// ==================================================
-
 async function setActivePlaylist(source) {
+  const requestId = ++zamzokSelectionRequest;
+
   zamzokCurrentSource = source;
 
   updatePlaylistButtons(source);
 
-  const grid = getNormalGrid();
-
-  if (!grid) return;
-
   if (source === 'all') {
-    zamzokNormalVideos = splitChannelVideos(
-      zamzokVideos
-    ).normal;
+    zamzokReels = zamzokVideos.slice();
 
-    renderNormalVideos();
+    renderZamzokVideos();
 
     return;
   }
@@ -620,19 +490,15 @@ async function setActivePlaylist(source) {
   const playlist = getPlaylistByType(source);
 
   if (!playlist) {
-    showVideoMessage(
+    return showVideoMessage(
       'هذا القسم غير متاح حاليًا.'
     );
-
-    return;
   }
 
   if (!playlist.id) {
-    showVideoMessage(
+    return showVideoMessage(
       `قائمة تشغيل ${playlist.arabicName} لم تتم إضافتها بعد.`
     );
-
-    return;
   }
 
   showVideoMessage(
@@ -643,40 +509,25 @@ async function setActivePlaylist(source) {
     let videos = zamzokPlaylistCache.get(playlist.id);
 
     if (!videos) {
-      if (!zamzokPlaylistLoading.has(playlist.id)) {
-        zamzokPlaylistLoading.set(
-          playlist.id,
-          fetchPlaylistVideos(playlist)
-        );
-      }
+      videos = await fetchPlaylistVideos(playlist);
 
-      videos = await zamzokPlaylistLoading.get(
-        playlist.id
-      );
-
-      zamzokPlaylistCache.set(
-        playlist.id,
-        videos
-      );
-
-      zamzokPlaylistLoading.delete(
-        playlist.id
-      );
+      zamzokPlaylistCache.set(playlist.id, videos);
     }
 
-    // عند اختيار قائمة تشغيل، اعرض فيديوهاتها
-    // في القسم العادي دون تغيير بيانات الريلز.
-    zamzokNormalVideos = videos.slice();
+    if (requestId !== zamzokSelectionRequest) {
+      return;
+    }
 
-    renderNormalVideos();
+    zamzokReels = videos.slice();
+
+    renderZamzokVideos();
 
   } catch (error) {
-    zamzokPlaylistLoading.delete(playlist.id);
+    if (requestId !== zamzokSelectionRequest) {
+      return;
+    }
 
-    console.error(
-      'ZAMZOK playlist error:',
-      error
-    );
+    console.error('ZAMZOK playlist error:', error);
 
     showVideoMessage(
       `تعذر تحميل القائمة: ${error.message}`
@@ -685,25 +536,23 @@ async function setActivePlaylist(source) {
 }
 
 // ==================================================
-// 12. RENDER NORMAL VIDEOS
+// 7. RENDER VIDEOS
 // ==================================================
 
-function renderNormalVideos() {
-  const grid = getNormalGrid();
+function renderZamzokVideos() {
+  const grid = document.getElementById('videoGrid');
 
   if (!grid) return;
 
-  if (!zamzokNormalVideos.length) {
-    showVideoMessage(
-      'لا توجد فيديوهات عادية متاحة في هذا القسم حاليًا.'
+  if (!zamzokReels.length) {
+    return showVideoMessage(
+      'لا توجد فيديوهات متاحة في هذا القسم حاليًا.'
     );
-
-    return;
   }
 
   grid.setAttribute('aria-busy', 'false');
 
-  grid.innerHTML = zamzokNormalVideos.map((video, index) => `
+  grid.innerHTML = zamzokReels.map((video, index) => `
     <article class="video-card zamzok-video-card">
 
       <button
@@ -711,7 +560,6 @@ function renderNormalVideos() {
         type="button"
         data-video-id="${escapeHTML(video.id)}"
         data-video-index="${index}"
-        data-video-type="normal"
         aria-label="تشغيل ${escapeHTML(video.title)}"
       >
 
@@ -721,7 +569,7 @@ function renderNormalVideos() {
           loading="lazy"
         >
 
-        <span class="zamzok-video-play">▶</span>
+        <span>▶ تشغيل الفيديو</span>
 
       </button>
 
@@ -732,210 +580,57 @@ function renderNormalVideos() {
     </article>
   `).join('');
 }
-
-// ==================================================
-// 13. REELS CATEGORY CONTROLS
-// ==================================================
-
-function initializeReelsCategories() {
-  const controls = document.getElementById(
-    'zamzokReelsCategories'
-  );
-
-  if (!controls) return;
-
-  controls.querySelectorAll(
-    '[data-reels-category]'
-  ).forEach(button => {
-    button.addEventListener('click', () => {
-      const category = button.dataset.reelsCategory;
-
-      zamzokCurrentReelsCategory = category;
-
-      controls.querySelectorAll(
-        '[data-reels-category]'
-      ).forEach(otherButton => {
-        const active =
-          otherButton.dataset.reelsCategory === category;
-
-        otherButton.classList.toggle(
-          'is-active',
-          active
-        );
-
-        otherButton.setAttribute(
-          'aria-pressed',
-          String(active)
-        );
-      });
-
-      renderReels();
-    });
-  });
-}
-
-function getReelsForCategory() {
-  if (zamzokCurrentReelsCategory === 'all') {
-    return zamzokReels;
-  }
-
-  const playlist = getPlaylistByType(
-    zamzokCurrentReelsCategory
-  );
-
-  if (!playlist) return [];
-
-  // نستخدم بيانات قائمة التشغيل إن كانت قد حُمّلت.
-  const playlistVideos = playlist.id
-    ? zamzokPlaylistCache.get(playlist.id)
-    : null;
-
-  if (playlistVideos) {
-    const reelIds = new Set(
-      zamzokReels.map(video => video.id)
-    );
-
-    return playlistVideos.filter(
-      video => reelIds.has(video.id)
-    );
-  }
-
-  // إذا لم تكن قائمة التشغيل متاحة أو لم تُحمّل،
-  // لا نخمن نوع الفيديو من عنوانه.
-  return [];
-}
-
-// ==================================================
-// 14. RENDER REELS
-// ==================================================
-
-function renderReels() {
-  const grid = getReelsGrid();
-
-  if (!grid) return;
-
-  const videos = getReelsForCategory();
-
-  if (!videos.length) {
-    if (zamzokCurrentReelsCategory === 'all') {
-      showReelsMessage(
-        'لا توجد فيديوهات قصيرة متاحة حاليًا.'
-      );
-    } else {
-      const playlist = getPlaylistByType(
-        zamzokCurrentReelsCategory
-      );
-
-      showReelsMessage(
-        playlist?.id
-          ? 'لا توجد فيديوهات قصيرة لهذا التصنيف ضمن الفيديوهات المحمّلة.'
-          : 'لم تتم إضافة قائمة تشغيل لهذا التصنيف بعد.'
-      );
-    }
-
-    return;
-  }
-
-  grid.setAttribute('aria-busy', 'false');
-
-  grid.innerHTML = videos.map((video, index) => `
-    <article class="video-card zamzok-reel-card">
-
-      <button
-        class="zamzok-video-button zamzok-reel-button"
-        type="button"
-        data-video-id="${escapeHTML(video.id)}"
-        data-video-index="${index}"
-        data-video-type="reel"
-        aria-label="تشغيل ${escapeHTML(video.title)}"
-      >
-
-        <img
-          src="${escapeHTML(video.thumbnail)}"
-          alt="${escapeHTML(video.title)}"
-          loading="lazy"
-        >
-
-        <span class="zamzok-video-play">▶</span>
-
-        <span class="zamzok-reel-badge">SHORTS</span>
-
-      </button>
-
-      <div class="video-info">
-        <h3>${escapeHTML(video.title)}</h3>
-      </div>
-
-    </article>
-  `).join('');
-}
-
-// ==================================================
-// 15. LOAD CHANNEL VIDEOS
-// ==================================================
 
 async function loadZamzokVideos() {
   if (zamzokLoadingPromise) {
     return zamzokLoadingPromise;
   }
 
-  const reelsGrid = getReelsGrid();
-  const normalGrid = getNormalGrid();
+  const grid = document.getElementById('videoGrid');
 
-  showReelsMessage(
-    'جاري تحميل الريلز والشورتس...'
-  );
-
-  showVideoMessage(
-    'جاري تحميل فيديوهات ZAMZOK...'
-  );
-
-  if (reelsGrid) {
-    reelsGrid.setAttribute('aria-busy', 'true');
-  }
-
-  if (normalGrid) {
-    normalGrid.setAttribute('aria-busy', 'true');
-  }
+  if (!grid) return;
 
   zamzokLoadingPromise = (async () => {
+    grid.setAttribute('aria-busy', 'true');
+
+    showVideoMessage(
+      'جاري تحميل أحدث فيديوهات ZAMZOK...'
+    );
+
     try {
       const videos = await fetchChannelVideos();
 
       zamzokVideos = videos;
 
-      const split = splitChannelVideos(videos);
-
-      zamzokReels = split.shorts;
-      zamzokNormalVideos = split.normal;
-
       zamzokPlaylistCache.set('__all__', videos);
 
-      renderReels();
-      renderNormalVideos();
+      if (!videos.length) {
+        if (zamzokCurrentSource === 'all') {
+          showVideoMessage(
+            'لا توجد فيديوهات متاحة حاليًا.'
+          );
+        }
+
+        return;
+      }
+
+      if (zamzokCurrentSource === 'all') {
+        zamzokReels = videos.slice();
+
+        renderZamzokVideos();
+      }
 
     } catch (error) {
-      console.error(
-        'ZAMZOK channel error:',
-        error
-      );
+      console.error('ZAMZOK channel error:', error);
 
-      showReelsMessage(
-        `تعذر تحميل الريلز: ${error.message}`
-      );
-
-      showVideoMessage(
-        `تعذر تحميل الفيديوهات: ${error.message}`
-      );
+      if (zamzokCurrentSource === 'all') {
+        showVideoMessage(
+          `تعذر تحميل الفيديوهات: ${error.message}`
+        );
+      }
 
     } finally {
-      if (reelsGrid) {
-        reelsGrid.setAttribute('aria-busy', 'false');
-      }
-
-      if (normalGrid) {
-        normalGrid.setAttribute('aria-busy', 'false');
-      }
+      grid.setAttribute('aria-busy', 'false');
 
       zamzokLoadingPromise = null;
     }
@@ -945,35 +640,17 @@ async function loadZamzokVideos() {
 }
 
 // ==================================================
-// 16. CATEGORY CARDS
+// 8. CATEGORY CARDS
 // ==================================================
 
 function connectWorldCategories() {
   document.querySelectorAll(
     '[data-zamzok-category]'
   ).forEach(card => {
-    if (card.dataset.zamzokBound === 'true') {
-      return;
-    }
-
-    card.dataset.zamzokBound = 'true';
-
     card.addEventListener('click', event => {
       event.preventDefault();
 
-      const category = card.dataset.zamzokCategory;
-
-      // اختر التصنيف في الريلز أيضًا.
-      const reelsButton = document.querySelector(
-        `#zamzokReelsCategories [data-reels-category="${category}"]`
-      );
-
-      if (reelsButton) {
-        reelsButton.click();
-      }
-
-      // اختر قائمة التشغيل في قسم الفيديوهات العادية.
-      setActivePlaylist(category);
+      setActivePlaylist(card.dataset.zamzokCategory);
 
       scrollToVideos();
     });
@@ -981,7 +658,7 @@ function connectWorldCategories() {
 }
 
 // ==================================================
-// 17. YOUTUBE IFRAME API
+// 9. YOUTUBE IFRAME PLAYER API
 // ==================================================
 
 function loadZamzokYouTubeAPI() {
@@ -1060,16 +737,15 @@ function loadZamzokYouTubeAPI() {
 }
 
 // ==================================================
-// 18. REELS PLAYER
+// 10. REELS PLAYER
 // ==================================================
 
 function createZamzokReelsPlayer() {
-  const existing = document.getElementById(
-    'zamzokReelsOverlay'
-  );
+  if (document.getElementById('zamzokReelsOverlay')) {
+    zamzokReelsOverlay = document.getElementById(
+      'zamzokReelsOverlay'
+    );
 
-  if (existing) {
-    zamzokReelsOverlay = existing;
     return;
   }
 
@@ -1193,7 +869,105 @@ function createZamzokReelsPlayer() {
 
   zamzokReelsOverlay = overlay;
 
-  installReelsStyles();
+  // ==================================================
+  // REELS STYLES
+  // ==================================================
+
+  if (!document.getElementById('zamzokSwipeStyles')) {
+    const style = document.createElement('style');
+
+    style.id = 'zamzokSwipeStyles';
+
+    style.textContent = `
+      #zamzokReelsOverlay .zamzok-reels-stage {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-video {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-video iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-swipe-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: block;
+        background: transparent;
+        pointer-events: auto !important;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        cursor: grab;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-header {
+        z-index: 30;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-actions {
+        z-index: 20;
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-nav {
+        z-index: 25;
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-bottom {
+        z-index: 15;
+        pointer-events: none;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-counter {
+        z-index: 30;
+        pointer-events: none;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-play-indicator {
+        position: absolute;
+        z-index: 18;
+        top: 50%;
+        left: 50%;
+        width: 68px;
+        height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translate(-50%, -50%) scale(.8);
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .68);
+        color: white;
+        font-size: 30px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .18s, transform .18s;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-play-indicator.is-visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
 
   getElement(
     '.zamzok-reels-close',
@@ -1236,6 +1010,12 @@ function createZamzokReelsPlayer() {
 
   initializeReelsTouch(overlay);
 
+  overlay.addEventListener('click', event => {
+    if (event.target === overlay) {
+      closeZamzokReels();
+    }
+  });
+
   document.addEventListener(
     'keydown',
     handleZamzokReelsKeyboard
@@ -1243,205 +1023,7 @@ function createZamzokReelsPlayer() {
 }
 
 // ==================================================
-// 19. REELS PLAYER STYLES
-// ==================================================
-
-function installReelsStyles() {
-  if (document.getElementById('zamzokSwipeStyles')) {
-    return;
-  }
-
-  const style = document.createElement('style');
-
-  style.id = 'zamzokSwipeStyles';
-
-  style.textContent = `
-    #zamzokReelsOverlay .zamzok-reels-stage {
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-video {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      width: 100%;
-      height: 100%;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-video iframe {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-swipe-layer {
-      position: absolute;
-      inset: 0;
-      z-index: 5;
-      background: transparent;
-      pointer-events: auto;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      cursor: grab;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-header {
-      z-index: 30;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-actions {
-      z-index: 20;
-      pointer-events: auto;
-      touch-action: manipulation;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-nav {
-      z-index: 25;
-      pointer-events: auto;
-      touch-action: manipulation;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-bottom {
-      z-index: 15;
-      pointer-events: none;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-counter {
-      z-index: 30;
-      pointer-events: none;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-play-indicator {
-      position: absolute;
-      z-index: 18;
-      top: 50%;
-      left: 50%;
-      width: 68px;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: translate(-50%, -50%) scale(.8);
-      border-radius: 50%;
-      background: rgba(0, 0, 0, .68);
-      color: white;
-      font-size: 30px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s, transform .18s;
-    }
-
-    #zamzokReelsOverlay .zamzok-reels-play-indicator.is-visible {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    .zamzok-video-button {
-      display: block;
-      position: relative;
-      width: 100%;
-      padding: 0;
-      overflow: hidden;
-      border: 0;
-      background: #100c18;
-      cursor: pointer;
-      text-align: inherit;
-    }
-
-    .zamzok-video-button img {
-      display: block;
-      width: 100%;
-      height: auto;
-      object-fit: cover;
-    }
-
-    .zamzok-video-play {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 32px;
-      opacity: 0;
-      background: rgba(0, 0, 0, .35);
-      transition: opacity .2s;
-    }
-
-    .zamzok-video-button:hover .zamzok-video-play,
-    .zamzok-video-button:focus-visible .zamzok-video-play {
-      opacity: 1;
-    }
-
-    .zamzok-reel-badge {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 5px 8px;
-      border-radius: 7px;
-      color: #170e00;
-      background: #ffcf55;
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: .5px;
-    }
-
-    .zamzok-reels-categories {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px 0;
-    }
-
-    .zamzok-category-btn {
-      border: 1px solid rgba(255, 207, 85, .25);
-      border-radius: 12px;
-      padding: 10px 15px;
-      background: #171020;
-      color: #fff9ed;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background .2s, color .2s;
-    }
-
-    .zamzok-category-btn.is-active,
-    .zamzok-category-btn:hover {
-      color: #160e02;
-      background: linear-gradient(120deg, #ffe78c, #ffad2e);
-    }
-
-    .zamzok-message {
-      grid-column: 1 / -1;
-      width: 100%;
-      text-align: center;
-      color: #ffcf55;
-      line-height: 2;
-      padding: 24px;
-    }
-
-    @media (max-width: 650px) {
-      .zamzok-reels-categories {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .zamzok-category-btn {
-        width: 100%;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
-// ==================================================
-// 20. TAP AND VERTICAL SWIPE
+// 11. TAP AND VERTICAL SWIPE
 // ==================================================
 
 function initializeReelsTouch(overlay) {
@@ -1466,6 +1048,9 @@ function initializeReelsTouch(overlay) {
   const DIRECTION_RATIO = 1.15;
   const TAP_DISTANCE = 12;
   const MAX_TAP_TIME = 500;
+
+  layer.style.pointerEvents = 'auto';
+  layer.style.touchAction = 'none';
 
   function resetSwipe() {
     activePointerId = null;
@@ -1512,6 +1097,7 @@ function initializeReelsTouch(overlay) {
       return;
     }
 
+    // TAP: PLAY / PAUSE
     if (
       Math.abs(deltaX) <= TAP_DISTANCE &&
       Math.abs(deltaY) <= TAP_DISTANCE &&
@@ -1521,6 +1107,7 @@ function initializeReelsTouch(overlay) {
       return;
     }
 
+    // Ignore short or slow movements.
     if (
       elapsed > MAX_SWIPE_TIME ||
       Math.abs(deltaY) < MIN_DISTANCE
@@ -1528,6 +1115,7 @@ function initializeReelsTouch(overlay) {
       return;
     }
 
+    // Ignore horizontal or diagonal swipes.
     if (
       Math.abs(deltaY) <
       Math.abs(deltaX) * DIRECTION_RATIO
@@ -1535,8 +1123,7 @@ function initializeReelsTouch(overlay) {
       return;
     }
 
-    // السحب لأعلى = التالي
-    // السحب لأسفل = السابق
+    // Swipe up = next; swipe down = previous.
     showZamzokReel(
       zamzokCurrentIndex + (deltaY < 0 ? 1 : -1)
     );
@@ -1547,7 +1134,7 @@ function initializeReelsTouch(overlay) {
 }
 
 // ==================================================
-// 21. PLAY / PAUSE
+// 12. PLAY / PAUSE CONTROL
 // ==================================================
 
 function toggleZamzokVideoPlayback() {
@@ -1566,8 +1153,7 @@ function toggleZamzokVideoPlayback() {
 
     if (state === YT.PlayerState.PLAYING) {
       zamzokYTPlayer.pauseVideo();
-
-      showZamzokPlaybackIndicator('Ⅱ');
+      showZamzokPlaybackIndicator('▶');
 
     } else if (
       state === YT.PlayerState.PAUSED ||
@@ -1575,21 +1161,16 @@ function toggleZamzokVideoPlayback() {
       state === YT.PlayerState.UNSTARTED
     ) {
       zamzokYTPlayer.playVideo();
-
-      showZamzokPlaybackIndicator('▶');
+      showZamzokPlaybackIndicator('Ⅱ');
 
     } else if (state === YT.PlayerState.ENDED) {
       zamzokYTPlayer.seekTo(0, true);
       zamzokYTPlayer.playVideo();
-
-      showZamzokPlaybackIndicator('▶');
+      showZamzokPlaybackIndicator('Ⅱ');
     }
 
   } catch (error) {
-    console.error(
-      'ZAMZOK playback error:',
-      error
-    );
+    console.error('ZAMZOK playback error:', error);
 
   } finally {
     window.setTimeout(() => {
@@ -1609,24 +1190,21 @@ function showZamzokPlaybackIndicator(symbol) {
   if (!indicator) return;
 
   indicator.textContent = symbol;
-
   indicator.classList.add('is-visible');
 
-  clearTimeout(zamzokIndicatorTimer);
+  clearTimeout(indicator._hideTimer);
 
-  zamzokIndicatorTimer = window.setTimeout(() => {
+  indicator._hideTimer = window.setTimeout(() => {
     indicator.classList.remove('is-visible');
   }, 550);
 }
 
 // ==================================================
-// 22. OPEN REELS
+// 13. OPEN REELS
 // ==================================================
 
-function openZamzokReels(index, videoList = null) {
-  const videos = videoList || getReelsForCategory();
-
-  if (!videos.length) {
+function openZamzokReels(index) {
+  if (!zamzokReels.length) {
     alert(
       'لا توجد فيديوهات جاهزة للتشغيل حاليًا.'
     );
@@ -1636,13 +1214,9 @@ function openZamzokReels(index, videoList = null) {
 
   createZamzokReelsPlayer();
 
-  // نستخدم القائمة المعروضة حاليًا حتى يطابق
-  // التنقل الفيديوهات الموجودة في التصنيف المختار.
-  zamzokActivePlayerVideos = videos;
-
   zamzokCurrentIndex = Math.max(
     0,
-    Math.min(index, videos.length - 1)
+    Math.min(index, zamzokReels.length - 1)
   );
 
   zamzokPreviousScroll = window.scrollY;
@@ -1666,22 +1240,16 @@ function openZamzokReels(index, videoList = null) {
   showZamzokReel(zamzokCurrentIndex);
 }
 
-let zamzokActivePlayerVideos = [];
-
 // ==================================================
-// 23. SHOW REEL
+// 14. SHOW REEL
 // ==================================================
 
 async function showZamzokReel(index) {
-  const videos = zamzokActivePlayerVideos.length
-    ? zamzokActivePlayerVideos
-    : getReelsForCategory();
-
   if (
     !zamzokReelsOverlay ||
-    !videos.length ||
+    !zamzokReels.length ||
     index < 0 ||
-    index >= videos.length
+    index >= zamzokReels.length
   ) {
     return;
   }
@@ -1690,7 +1258,7 @@ async function showZamzokReel(index) {
 
   zamzokCurrentIndex = index;
 
-  const reel = videos[index];
+  const reel = zamzokReels[index];
 
   const container = getElement(
     '.zamzok-reels-video',
@@ -1724,7 +1292,7 @@ async function showZamzokReel(index) {
   getElement(
     '.zamzok-reels-counter',
     zamzokReelsOverlay
-  ).textContent = `${index + 1} / ${videos.length}`;
+  ).textContent = `${index + 1} / ${zamzokReels.length}`;
 
   getElement(
     '.zamzok-reels-prev',
@@ -1734,7 +1302,7 @@ async function showZamzokReel(index) {
   getElement(
     '.zamzok-reels-next',
     zamzokReelsOverlay
-  ).disabled = index === videos.length - 1;
+  ).disabled = index === zamzokReels.length - 1;
 
   try {
     await loadZamzokYouTubeAPI();
@@ -1778,11 +1346,13 @@ async function showZamzokReel(index) {
 
             zamzokPlayerReady = true;
 
+            // Autoplay may be blocked by the browser.
+            // The user can tap the video to start playback.
             try {
               event.target.playVideo();
             } catch (error) {
               console.warn(
-                'YouTube autoplay may be blocked:',
+                'YouTube autoplay was blocked:',
                 error
               );
             }
@@ -1821,7 +1391,7 @@ async function showZamzokReel(index) {
 }
 
 // ==================================================
-// 24. CLOSE REELS
+// 15. CLOSE REELS
 // ==================================================
 
 function closeZamzokReels(fromHistory = false) {
@@ -1829,6 +1399,7 @@ function closeZamzokReels(fromHistory = false) {
 
   zamzokReelsOverlay.classList.remove('is-open');
 
+  // Invalidate any pending player creation.
   zamzokPlayerRequest++;
 
   if (zamzokYTPlayer) {
@@ -1841,7 +1412,6 @@ function closeZamzokReels(fromHistory = false) {
 
   zamzokPlayerReady = false;
   zamzokPlayerTapBusy = false;
-  zamzokActivePlayerVideos = [];
 
   const container = getElement(
     '.zamzok-reels-video',
@@ -1879,13 +1449,14 @@ window.addEventListener('popstate', () => {
     zamzokReelsOverlay?.classList.contains('is-open')
   ) {
     closeZamzokReels(true);
+
   } else {
     zamzokHistoryActive = false;
   }
 });
 
 // ==================================================
-// 25. FULLSCREEN
+// 16. FULLSCREEN
 // ==================================================
 
 async function toggleZamzokFullscreen() {
@@ -1907,50 +1478,41 @@ async function toggleZamzokFullscreen() {
       );
     }
 
-  } catch (error) {
-    console.warn(
-      'Fullscreen is not available:',
-      error
+  } catch {
+    zamzokReelsOverlay.classList.toggle(
+      'force-fullscreen'
     );
   }
 }
 
 // ==================================================
-// 26. YOUTUBE ACTION BUTTONS
+// 17. YOUTUBE ACTION BUTTONS
 // ==================================================
 
 function openZamzokOnYouTube() {
-  const videos = zamzokActivePlayerVideos.length
-    ? zamzokActivePlayerVideos
-    : getReelsForCategory();
+  const reel = zamzokReels[zamzokCurrentIndex];
 
-  const video = videos[zamzokCurrentIndex];
-
-  if (!video) return;
-
-  window.open(
-    `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`,
-    '_blank',
-    'noopener,noreferrer'
-  );
+  if (reel) {
+    window.open(
+      `https://www.youtube.com/watch?v=${encodeURIComponent(reel.id)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
 }
 
 async function shareZamzokReel() {
-  const videos = zamzokActivePlayerVideos.length
-    ? zamzokActivePlayerVideos
-    : getReelsForCategory();
+  const reel = zamzokReels[zamzokCurrentIndex];
 
-  const video = videos[zamzokCurrentIndex];
-
-  if (!video) return;
+  if (!reel) return;
 
   const url =
-    `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`;
+    `https://www.youtube.com/watch?v=${encodeURIComponent(reel.id)}`;
 
   try {
     if (navigator.share) {
       await navigator.share({
-        title: video.title,
+        title: reel.title,
         text: 'شاهد الفيديو على ZAMZOK',
         url
       });
@@ -1966,23 +1528,17 @@ async function shareZamzokReel() {
       return;
     }
 
-    window.prompt(
-      'انسخ رابط الفيديو:',
-      url
-    );
+    window.prompt('انسخ رابط الفيديو:', url);
 
   } catch (error) {
     if (error.name !== 'AbortError') {
-      window.prompt(
-        'رابط الفيديو:',
-        url
-      );
+      window.prompt('رابط الفيديو:', url);
     }
   }
 }
 
 // ==================================================
-// 27. KEYBOARD NAVIGATION
+// 18. KEYBOARD NAVIGATION
 // ==================================================
 
 function handleZamzokReelsKeyboard(event) {
@@ -2012,7 +1568,7 @@ function handleZamzokReelsKeyboard(event) {
 }
 
 // ==================================================
-// 28. VIDEO CARD CLICK HANDLER
+// 19. VIDEO CARD CLICK HANDLER
 // ==================================================
 
 document.addEventListener('click', event => {
@@ -2024,40 +1580,19 @@ document.addEventListener('click', event => {
 
   event.preventDefault();
 
-  const videoId = button.dataset.videoId;
-  const videoType = button.dataset.videoType;
+  const id = button.dataset.videoId;
 
-  if (videoType === 'normal') {
-    const index = zamzokNormalVideos.findIndex(
-      video => video.id === videoId
-    );
-
-    const video = zamzokNormalVideos[index];
-
-    if (video) {
-      window.open(
-        `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`,
-        '_blank',
-        'noopener,noreferrer'
-      );
-    }
-
-    return;
-  }
-
-  const videos = getReelsForCategory();
-
-  const index = videos.findIndex(
-    video => video.id === videoId
+  const index = zamzokReels.findIndex(
+    video => video.id === id
   );
 
-  if (index >= 0) {
-    openZamzokReels(index, videos);
-  }
+  openZamzokReels(
+    index >= 0 ? index : 0
+  );
 });
 
 // ==================================================
-// 29. INITIALIZE WEBSITE
+// 20. INITIALIZE WEBSITE
 // ==================================================
 
 function initializeZamzok() {
@@ -2066,8 +1601,6 @@ function initializeZamzok() {
   initializeYear();
 
   createPlaylistControls();
-
-  initializeReelsCategories();
 
   connectWorldCategories();
 
