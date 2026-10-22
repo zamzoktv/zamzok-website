@@ -1,6 +1,8 @@
 /* ==================================================
    ZAMZOK WEBSITE — COMPLETE STYLES.CSS
-   Black & Gold Identity + Responsive Reels + Swipe Support
+   Black & Gold Identity
+   Responsive Reels + Regular Videos
+   Mobile Friendly + Swipe Support
 ================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@500;700;800;900&display=swap');
@@ -44,7 +46,9 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-img {
+img,
+video,
+iframe {
   max-width: 100%;
 }
 
@@ -53,7 +57,10 @@ a {
   text-decoration: none;
 }
 
-button {
+button,
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -169,7 +176,9 @@ nav a:focus-visible {
   box-shadow: 0 0 24px #ffbd3b20;
   font-size: 13px;
   font-weight: 800;
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 .header-subscribe:hover {
@@ -271,7 +280,12 @@ h1 {
 h1 span,
 .section-heading h2 span,
 .join-section h2 span {
-  background: linear-gradient(100deg, #fff0a6, #ffb62e 45%, #c678ff 85%);
+  background: linear-gradient(
+    100deg,
+    #fff0a6,
+    #ffb62e 45%,
+    #c678ff 85%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
@@ -300,7 +314,9 @@ h1 span,
   border-radius: 10px;
   font-size: 14px;
   font-weight: 800;
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 .btn:hover {
@@ -405,7 +421,7 @@ h1 span,
 }
 
 /* ==================================================
-   6. VIDEO SECTION
+   6. VIDEO SECTION CONTAINER
 ================================================== */
 
 .zamzok-player {
@@ -430,6 +446,10 @@ h1 span,
   font-size: 14px;
   line-height: 1.9;
 }
+
+/* ==================================================
+   7. PLAYLIST FILTER BUTTONS
+================================================== */
 
 .zamzok-playlist-controls {
   display: flex;
@@ -469,12 +489,35 @@ h1 span,
   box-shadow: 0 5px 20px #ffbd3b18;
 }
 
-.video-grid {
+/* ==================================================
+   8. VIDEO GRIDS — SHARED BASE
+================================================== */
+
+.video-grid,
+.reels-grid,
+.shorts-grid,
+.regular-video-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
+  width: 100%;
   gap: 20px;
 }
+
+.video-grid,
+.regular-video-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* شبكة الريلز: صور طولية */
+.reels-grid,
+.shorts-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ==================================================
+   9. VIDEO CARDS
+================================================== */
 
 .video-card,
 .zamzok-video-card {
@@ -496,10 +539,12 @@ h1 span,
   box-shadow: 0 14px 35px #0006;
 }
 
+/* زر الصورة */
 .zamzok-video-button {
   position: relative;
   display: block;
   width: 100%;
+  margin: 0;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -509,12 +554,16 @@ h1 span,
   cursor: pointer;
 }
 
-.zamzok-video-button img {
+.zamzok-video-button img,
+.video-thumbnail {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: #171323;
+  object-fit: cover;
+  object-position: center;
   transition: transform .35s, filter .35s;
 }
 
@@ -523,9 +572,12 @@ h1 span,
   filter: brightness(1.08);
 }
 
+/* زر التشغيل أسفل الصورة */
 .zamzok-video-button > span {
   display: block;
-  padding: 11px;
+  width: 100%;
+  min-height: 52px;
+  padding: 11px 7px;
   border-top: 1px solid #ffcf5530;
   background: linear-gradient(90deg, #171020, #21132c);
   color: var(--gold);
@@ -534,8 +586,11 @@ h1 span,
   font-weight: 800;
 }
 
+/* معلومات الفيديو */
 .video-info {
+  min-width: 0;
   padding: 15px 16px 18px;
+  overflow-wrap: anywhere;
 }
 
 .video-info h3 {
@@ -546,10 +601,83 @@ h1 span,
   overflow-wrap: anywhere;
 }
 
+/* ==================================================
+   10. REGULAR YOUTUBE VIDEOS — LANDSCAPE 16:9
+================================================== */
+
+/*
+  يعمل مع:
+  .regular-video-grid
+  وأيضًا #videoGrid في حالة عدم وجود كلاس إضافي.
+*/
+
+.regular-video-grid .zamzok-video-button img,
+.regular-video-grid .video-thumbnail,
+#videoGrid .zamzok-video-button img,
+#videoGrid .video-thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ==================================================
+   11. REELS / SHORTS — PORTRAIT 9:16
+================================================== */
+
+/*
+  صور YouTube API قد تكون أفقية أصلًا.
+  aspect-ratio يجعل الكارت طوليًا، لكنه لا ينشئ
+  صورة أصلية طولية إذا لم تكن متوفرة من المصدر.
+*/
+
+.reels-grid .video-card,
+.reels-grid .zamzok-video-card,
+.shorts-grid .video-card,
+.shorts-grid .zamzok-video-card {
+  border-radius: 14px;
+}
+
+.reels-grid .zamzok-video-button img,
+.reels-grid .video-thumbnail,
+.shorts-grid .zamzok-video-button img,
+.shorts-grid .video-thumbnail {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  object-position: center;
+}
+
+.reels-grid .zamzok-video-button > span,
+.shorts-grid .zamzok-video-button > span {
+  min-height: 44px;
+  padding: 9px 5px;
+  font-size: 12px;
+}
+
+.reels-grid .video-info,
+.shorts-grid .video-info {
+  padding: 10px;
+}
+
+.reels-grid .video-info h3,
+.shorts-grid .video-info h3 {
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+/* ==================================================
+   12. VIDEO GRID MESSAGES
+================================================== */
+
 .video-grid > p,
+.reels-grid > p,
+.shorts-grid > p,
+.regular-video-grid > p,
 .zamzok-message {
   grid-column: 1 / -1;
   width: 100%;
+  margin: 0;
   padding: 24px;
   color: var(--gold);
   text-align: center;
@@ -557,7 +685,7 @@ h1 span,
 }
 
 /* ==================================================
-   7. WORLDS / CATEGORIES
+   13. WORLDS / CATEGORIES
 ================================================== */
 
 .worlds-section {
@@ -597,7 +725,9 @@ h1 span,
   border-radius: 15px;
   background: #15101f;
   cursor: pointer;
-  transition: transform var(--transition), border-color var(--transition);
+  transition:
+    transform var(--transition),
+    border-color var(--transition);
 }
 
 .world::before {
@@ -678,7 +808,7 @@ h1 span,
 }
 
 /* ==================================================
-   8. SUBSCRIBE SECTION
+   14. SUBSCRIBE SECTION
 ================================================== */
 
 .join-section {
@@ -725,7 +855,7 @@ h1 span,
 }
 
 /* ==================================================
-   9. FOOTER
+   15. FOOTER
 ================================================== */
 
 footer {
@@ -753,7 +883,7 @@ footer small {
 }
 
 /* ==================================================
-   10. REELS OVERLAY
+   16. REELS OVERLAY
 ================================================== */
 
 body.zamzok-reels-active {
@@ -845,7 +975,9 @@ body.zamzok-reels-active {
   color: #fff;
   font-size: 23px;
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
+  transition:
+    background var(--transition),
+    border-color var(--transition);
 }
 
 .zamzok-reels-close:hover,
@@ -890,13 +1022,8 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   SWIPE LAYER — FIXED
+   17. SWIPE LAYER
 ================================================== */
-
-/*
-  استقبال اللمس مطلوب لتشغيل السحب.
-  أزرار التحكم موضوعة فوق هذه الطبقة.
-*/
 
 .zamzok-reels-swipe-layer {
   position: absolute;
@@ -904,17 +1031,11 @@ body.zamzok-reels-active {
   z-index: 5;
   display: block;
   background: transparent;
-
-  /* إصلاح منع استقبال اللمس */
   pointer-events: auto !important;
-
-  /* السماح لكود JavaScript بالتقاط حركة الإصبع */
   touch-action: none;
-
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-
   cursor: grab;
 }
 
@@ -922,7 +1043,9 @@ body.zamzok-reels-active {
   cursor: grabbing;
 }
 
-/* Reel actions */
+/* ==================================================
+   18. REELS ACTIONS
+================================================== */
 
 .zamzok-reels-actions {
   position: absolute;
@@ -968,7 +1091,10 @@ body.zamzok-reels-active {
   color: #fff;
   font-family: Arial, sans-serif;
   font-size: 28px;
-  transition: transform .2s, color .2s, border-color .2s;
+  transition:
+    transform .2s,
+    color .2s,
+    border-color .2s;
 }
 
 .zamzok-reels-action:hover .zamzok-reels-action-icon {
@@ -1007,7 +1133,9 @@ body.zamzok-reels-active {
   font-weight: 900;
 }
 
-/* Reel title and account */
+/* ==================================================
+   19. REELS TITLE AND ACCOUNT
+================================================== */
 
 .zamzok-reels-bottom {
   position: absolute;
@@ -1053,7 +1181,9 @@ body.zamzok-reels-active {
   font-size: 11px;
 }
 
-/* Previous / next controls */
+/* ==================================================
+   20. REELS NAVIGATION
+================================================== */
 
 .zamzok-reels-nav {
   position: absolute;
@@ -1115,7 +1245,68 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   11. TABLET
+   21. REGULAR VIDEO PLAYER MODAL
+================================================== */
+
+.zamzok-video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .88);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.zamzok-video-modal.is-open {
+  display: flex;
+}
+
+.zamzok-video-modal-inner {
+  position: relative;
+  width: min(100%, 1000px);
+  overflow: hidden;
+  border: 1px solid #ffcf5550;
+  border-radius: 16px;
+  background: #090711;
+  box-shadow: 0 20px 80px #0008;
+}
+
+.zamzok-video-modal-inner iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: #000;
+}
+
+.zamzok-video-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #ffffff55;
+  border-radius: 50%;
+  background: #090711e8;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.zamzok-video-modal-close:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ==================================================
+   22. TABLET
 ================================================== */
 
 @media (max-width: 900px) {
@@ -1155,9 +1346,16 @@ body.zamzok-reels-active {
     padding: 20px;
   }
 
-  .video-grid {
+  .video-grid,
+  .regular-video-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 15px;
+  }
+
+  .reels-grid,
+  .shorts-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .world-grid {
@@ -1178,7 +1376,7 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   12. MOBILE
+   23. MOBILE
 ================================================== */
 
 @media (max-width: 650px) {
@@ -1329,9 +1527,16 @@ body.zamzok-reels-active {
     font-size: 12px;
   }
 
-  .video-grid {
+  .video-grid,
+  .regular-video-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .reels-grid,
+  .shorts-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
   }
 
   .video-card,
@@ -1349,8 +1554,27 @@ body.zamzok-reels-active {
   }
 
   .zamzok-video-button > span {
+    min-height: 46px;
     padding: 9px 5px;
     font-size: 11px;
+  }
+
+  .reels-grid .video-info,
+  .shorts-grid .video-info {
+    padding: 7px;
+  }
+
+  .reels-grid .video-info h3,
+  .shorts-grid .video-info h3 {
+    font-size: 10px;
+    line-height: 1.6;
+  }
+
+  .reels-grid .zamzok-video-button > span,
+  .shorts-grid .zamzok-video-button > span {
+    min-height: 40px;
+    padding: 7px 3px;
+    font-size: 10px;
   }
 
   .world-grid {
@@ -1477,10 +1701,26 @@ body.zamzok-reels-active {
     left: 12px;
     font-size: 10px;
   }
+
+  .zamzok-video-modal {
+    padding: 10px;
+  }
+
+  .zamzok-video-modal-inner {
+    border-radius: 10px;
+  }
+
+  .zamzok-video-modal-close {
+    top: 6px;
+    right: 6px;
+    width: 35px;
+    height: 35px;
+    font-size: 20px;
+  }
 }
 
 /* ==================================================
-   13. SMALL PHONES
+   24. SMALL PHONES
 ================================================== */
 
 @media (max-width: 380px) {
@@ -1499,12 +1739,8 @@ body.zamzok-reels-active {
     font-size: 10px;
   }
 
-  .video-grid {
-    grid-template-columns: 1fr;
-  }
-
   .video-info h3 {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .hero-actions .btn {
@@ -1513,6 +1749,17 @@ body.zamzok-reels-active {
 
   .zamzok-playlist-controls {
     grid-template-columns: 1fr;
+  }
+
+  .reels-grid,
+  .shorts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .video-grid,
+  .regular-video-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .zamzok-reels-actions {
@@ -1535,7 +1782,7 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   14. LANDSCAPE PHONES
+   25. LANDSCAPE PHONES
 ================================================== */
 
 @media (max-height: 500px) and (orientation: landscape) {
@@ -1609,17 +1856,15 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   15. TOUCH AND SWIPE SUPPORT — FIXED
+   26. TOUCH AND SWIPE SUPPORT
 ================================================== */
 
-/* تحسين استقبال اللمس داخل مشغل الريلز */
 #zamzokReelsOverlay .zamzok-reels-stage {
   position: relative;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* فيديو YouTube */
 #zamzokReelsOverlay .zamzok-reels-video {
   position: absolute;
   inset: 0;
@@ -1630,24 +1875,17 @@ body.zamzok-reels-active {
   background: #000;
 }
 
-/* طبقة استقبال السحب */
 #zamzokReelsOverlay .zamzok-reels-swipe-layer {
   position: absolute;
   inset: 0;
   z-index: 5;
   display: block;
   background: transparent;
-
-  /* إصلاح المشكلة الأساسية */
   pointer-events: auto !important;
-
-  /* التقاط السحب عبر JavaScript */
   touch-action: none;
-
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-
   cursor: grab;
 }
 
@@ -1655,7 +1893,6 @@ body.zamzok-reels-active {
   cursor: grabbing;
 }
 
-/* إبقاء أزرار التحكم فوق طبقة السحب */
 #zamzokReelsOverlay .zamzok-reels-header {
   z-index: 30;
 }
@@ -1682,14 +1919,13 @@ body.zamzok-reels-active {
   pointer-events: none;
 }
 
-/* منع تمرير الصفحة خلف مشغل الريلز */
 body.zamzok-reels-active {
   overflow: hidden !important;
   overscroll-behavior: none;
 }
 
 /* ==================================================
-   16. REDUCED MOTION
+   27. REDUCED MOTION
 ================================================== */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1704,21 +1940,26 @@ body.zamzok-reels-active {
 }
 
 /* ==================================================
-   17. ZAMZOK — FULL THUMBNAIL CARDS
-   توحيد الصور المصغرة لتملأ مساحة الصورة بالكامل
+   28. FULL THUMBNAIL CARDS
 ================================================== */
 
-/* حاويات الفيديوهات */
 .video-grid .video-card,
-.video-grid .zamzok-video-card {
+.video-grid .zamzok-video-card,
+.regular-video-grid .video-card,
+.regular-video-grid .zamzok-video-card,
+.reels-grid .video-card,
+.reels-grid .zamzok-video-card,
+.shorts-grid .video-card,
+.shorts-grid .zamzok-video-card {
   min-width: 0;
   overflow: hidden;
   align-self: stretch;
-  border-radius: 16px;
 }
 
-/* منطقة الصورة المصغرة */
-.video-grid .zamzok-video-button {
+.video-grid .zamzok-video-button,
+.regular-video-grid .zamzok-video-button,
+.reels-grid .zamzok-video-button,
+.shorts-grid .zamzok-video-button {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -1730,72 +1971,64 @@ body.zamzok-reels-active {
   background: #090711;
 }
 
-/* جعل الصورة تملأ عرض الكارت */
-.video-grid .zamzok-video-button img {
-  display: block;
+.video-grid .zamzok-video-button img,
+.regular-video-grid .zamzok-video-button img {
   width: 100%;
-  height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  object-position: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
 }
 
-/* زر تشغيل الفيديو */
-.video-grid .zamzok-video-button > span {
+.reels-grid .zamzok-video-button img,
+.shorts-grid .zamzok-video-button img {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+}
+
+.video-grid .zamzok-video-button > span,
+.regular-video-grid .zamzok-video-button > span {
   display: block;
   width: 100%;
-  min-height: 56px;
-  padding: 12px 6px;
+  min-height: 52px;
+  padding: 10px 5px;
   text-align: center;
-  box-sizing: border-box;
 }
 
-/* توحيد مساحة معلومات الفيديو */
-.video-grid .video-info {
+.reels-grid .zamzok-video-button > span,
+.shorts-grid .zamzok-video-button > span {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.video-grid .video-info,
+.regular-video-grid .video-info,
+.reels-grid .video-info,
+.shorts-grid .video-info {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* الموبايل */
-@media (max-width: 650px) {
-  .video-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
+/* ==================================================
+   29. OPTIONAL CLASS FOR HORIZONTAL VIDEO MODAL
+================================================== */
 
-  .video-grid .video-card,
-  .video-grid .zamzok-video-card {
-    border-radius: 14px;
-  }
-
-  .video-grid .zamzok-video-button img {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-  }
-
-  .video-grid .zamzok-video-button > span {
-    min-height: 52px;
-    padding: 10px 4px;
-    font-size: 12px;
-  }
+.zamzok-video-modal.is-landscape {
+  display: flex;
 }
 
-/* الشاشات الصغيرة جدًا */
-@media (max-width: 380px) {
-  .video-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .video-grid .zamzok-video-button img {
-    aspect-ratio: 16 / 9;
-  }
-
-  .video-grid .video-info {
-    padding: 10px;
-  }
+.zamzok-video-modal.is-landscape .zamzok-video-modal-inner {
+  width: min(100%, 1100px);
 }
+
+.zamzok-video-modal.is-landscape iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+/* ==================================================
+   END OF ZAMZOK STYLES
+================================================== */
