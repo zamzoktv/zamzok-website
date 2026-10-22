@@ -1,6 +1,7 @@
 // ==================================================
 // ZAMZOK WEBSITE — SCRIPT.JS
-// YouTube Videos + Playlists + Reels + Vertical Swipe
+// YouTube Videos + Playlists + Reels
+// Tap to Play/Pause + Vertical Swipe
 // ==================================================
 
 'use strict';
@@ -10,7 +11,6 @@
 // ==================================================
 
 const ZAMZOK_CONFIG = {
-  // ضع مفتاح YouTube API الجديد والمقيّد هنا.
   apiKey: 'AIzaSyDpukCjizMYEkdtvm6h7RqzcUjSKthhaPo',
 
   channelId: 'UCNuIyleVU-8sXQFDitaKiSg',
@@ -58,10 +58,17 @@ let zamzokReels = [];
 let zamzokCurrentIndex = 0;
 let zamzokCurrentSource = 'all';
 let zamzokReelsOverlay = null;
+
 let zamzokHistoryActive = false;
 let zamzokPreviousScroll = 0;
 let zamzokLoadingPromise = null;
 let zamzokSelectionRequest = 0;
+
+let zamzokYTPlayer = null;
+let zamzokYTApiPromise = null;
+let zamzokPlayerRequest = 0;
+let zamzokPlayerReady = false;
+let zamzokPlayerTapBusy = false;
 
 const zamzokPlaylistCache = new Map();
 
@@ -189,7 +196,7 @@ function initializeYear() {
 }
 
 // ==================================================
-// 5. YOUTUBE API
+// 5. YOUTUBE DATA API
 // ==================================================
 
 async function youtubeRequest(endpoint, params = {}) {
@@ -200,7 +207,7 @@ async function youtubeRequest(endpoint, params = {}) {
     key === 'PUT_YOUR_NEW_API_KEY_HERE'
   ) {
     throw new Error(
-      'أضف مفتاح YouTube API داخل script.js.'
+      'أضف مفتاح YouTube API الجديد داخل script.js.'
     );
   }
 
@@ -651,7 +658,86 @@ function connectWorldCategories() {
 }
 
 // ==================================================
-// 9. REELS PLAYER
+// 9. YOUTUBE IFRAME PLAYER API
+// ==================================================
+
+function loadZamzokYouTubeAPI() {
+  if (window.YT?.Player) {
+    return Promise.resolve(window.YT);
+  }
+
+  if (zamzokYTApiPromise) {
+    return zamzokYTApiPromise;
+  }
+
+  zamzokYTApiPromise = new Promise((resolve, reject) => {
+    let settled = false;
+
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+
+      settled = true;
+      zamzokYTApiPromise = null;
+
+      reject(
+        new Error('انتهت مهلة تحميل مشغل YouTube.')
+      );
+    }, 20000);
+
+    const previousCallback =
+      window.onYouTubeIframeAPIReady;
+
+    window.onYouTubeIframeAPIReady = function () {
+      if (typeof previousCallback === 'function') {
+        try {
+          previousCallback();
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      if (settled) return;
+
+      settled = true;
+      clearTimeout(timeout);
+
+      resolve(window.YT);
+    };
+
+    let script = document.querySelector(
+      'script[src="https://www.youtube.com/iframe_api"]'
+    );
+
+    if (!script) {
+      script = document.createElement('script');
+
+      script.src =
+        'https://www.youtube.com/iframe_api';
+
+      script.async = true;
+
+      script.onerror = () => {
+        if (settled) return;
+
+        settled = true;
+        clearTimeout(timeout);
+
+        zamzokYTApiPromise = null;
+
+        reject(
+          new Error('تعذر تحميل مشغل YouTube.')
+        );
+      };
+
+      document.head.appendChild(script);
+    }
+  });
+
+  return zamzokYTApiPromise;
+}
+
+// ==================================================
+// 10. REELS PLAYER
 // ==================================================
 
 function createZamzokReelsPlayer() {
@@ -697,7 +783,7 @@ function createZamzokReelsPlayer() {
 
       <div
         class="zamzok-reels-swipe-layer"
-        aria-label="اسحب لأعلى أو لأسفل للتنقل بين الفيديوهات"
+        aria-label="اضغط للتشغيل أو الإيقاف، واسحب للتنقل بين الفيديوهات"
       ></div>
 
       <div class="zamzok-reels-actions">
@@ -752,7 +838,7 @@ function createZamzokReelsPlayer() {
         <h2 class="zamzok-reels-title"></h2>
 
         <p class="zamzok-reels-hint">
-          اسحب لأعلى للفيديو التالي ولأسفل للسابق
+          اضغط للتشغيل أو الإيقاف · اسحب لأعلى أو لأسفل للتنقل
         </p>
 
       </div>
@@ -769,6 +855,11 @@ function createZamzokReelsPlayer() {
         aria-label="الفيديو التالي"
       >⌄</button>
 
+      <div
+        class="zamzok-reels-play-indicator"
+        aria-hidden="true"
+      >Ⅱ</div>
+
     </div>
 
     <div class="zamzok-reels-counter"></div>
@@ -776,8 +867,10 @@ function createZamzokReelsPlayer() {
 
   document.body.appendChild(overlay);
 
+  zamzokReelsOverlay = overlay;
+
   // ==================================================
-  // SWIPE STYLES — FIXED
+  // REELS STYLES
   // ==================================================
 
   if (!document.getElementById('zamzokSwipeStyles')) {
@@ -813,20 +906,12 @@ function createZamzokReelsPlayer() {
         z-index: 5;
         display: block;
         background: transparent;
-
         pointer-events: auto !important;
         touch-action: none;
-
         user-select: none;
         -webkit-user-select: none;
-
         -webkit-tap-highlight-color: transparent;
-
         cursor: grab;
-      }
-
-      #zamzokReelsOverlay .zamzok-reels-swipe-layer:active {
-        cursor: grabbing;
       }
 
       #zamzokReelsOverlay .zamzok-reels-header {
@@ -854,23 +939,40 @@ function createZamzokReelsPlayer() {
         z-index: 30;
         pointer-events: none;
       }
+
+      #zamzokReelsOverlay .zamzok-reels-play-indicator {
+        position: absolute;
+        z-index: 18;
+        top: 50%;
+        left: 50%;
+        width: 68px;
+        height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translate(-50%, -50%) scale(.8);
+        border-radius: 50%;
+        background: rgba(0, 0, 0, .68);
+        color: white;
+        font-size: 30px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .18s, transform .18s;
+      }
+
+      #zamzokReelsOverlay .zamzok-reels-play-indicator.is-visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
     `;
 
     document.head.appendChild(style);
   }
 
-  // ==================================================
-  // REELS BUTTONS
-  // ==================================================
-
-  zamzokReelsOverlay = overlay;
-
   getElement(
     '.zamzok-reels-close',
     overlay
-  ).addEventListener('click', () => {
-    closeZamzokReels();
-  });
+  ).addEventListener('click', closeZamzokReels);
 
   getElement(
     '.zamzok-reels-fullscreen',
@@ -906,7 +1008,6 @@ function createZamzokReelsPlayer() {
     overlay
   ).addEventListener('click', shareZamzokReel);
 
-  // تشغيل إصلاح السحب
   initializeReelsTouch(overlay);
 
   overlay.addEventListener('click', event => {
@@ -922,7 +1023,7 @@ function createZamzokReelsPlayer() {
 }
 
 // ==================================================
-// 10. VERTICAL SWIPE — FIXED
+// 11. TAP AND VERTICAL SWIPE
 // ==================================================
 
 function initializeReelsTouch(overlay) {
@@ -931,28 +1032,30 @@ function initializeReelsTouch(overlay) {
     overlay
   );
 
-  if (!layer) return;
+  if (!layer || layer.dataset.initialized === 'true') {
+    return;
+  }
+
+  layer.dataset.initialized = 'true';
 
   let startX = 0;
   let startY = 0;
   let startTime = 0;
   let activePointerId = null;
-  let swipeHandled = false;
 
   const MIN_DISTANCE = 55;
   const MAX_SWIPE_TIME = 1200;
   const DIRECTION_RATIO = 1.15;
+  const TAP_DISTANCE = 12;
+  const MAX_TAP_TIME = 500;
 
-  // التأكد من أن طبقة السحب تستقبل اللمس
   layer.style.pointerEvents = 'auto';
   layer.style.touchAction = 'none';
 
   function resetSwipe() {
     activePointerId = null;
-    swipeHandled = false;
   }
 
-  // بداية السحب
   layer.addEventListener('pointerdown', event => {
     if (
       event.pointerType === 'mouse' &&
@@ -971,22 +1074,15 @@ function initializeReelsTouch(overlay) {
     startY = event.clientY;
     startTime = performance.now();
 
-    swipeHandled = false;
-
-    // الحفاظ على استقبال الحركة أثناء السحب
     try {
       layer.setPointerCapture(event.pointerId);
-    } catch (_) {
-      // المتصفح قد لا يدعم التقاط المؤشر في هذه الحالة
-    }
+    } catch (_) {}
   });
 
-  // نهاية السحب
   layer.addEventListener('pointerup', event => {
     if (
       activePointerId === null ||
-      event.pointerId !== activePointerId ||
-      swipeHandled
+      event.pointerId !== activePointerId
     ) {
       return;
     }
@@ -995,56 +1091,116 @@ function initializeReelsTouch(overlay) {
     const deltaY = event.clientY - startY;
     const elapsed = performance.now() - startTime;
 
-    swipeHandled = true;
+    resetSwipe();
 
-    // تجاهل السحب البطيء جدًا أو القصير
+    if (!overlay.classList.contains('is-open')) {
+      return;
+    }
+
+    // TAP: PLAY / PAUSE
+    if (
+      Math.abs(deltaX) <= TAP_DISTANCE &&
+      Math.abs(deltaY) <= TAP_DISTANCE &&
+      elapsed <= MAX_TAP_TIME
+    ) {
+      toggleZamzokVideoPlayback();
+      return;
+    }
+
+    // Ignore short or slow movements.
     if (
       elapsed > MAX_SWIPE_TIME ||
       Math.abs(deltaY) < MIN_DISTANCE
     ) {
-      resetSwipe();
       return;
     }
 
-    // تجاهل السحب الأفقي أو القطري
+    // Ignore horizontal or diagonal swipes.
     if (
       Math.abs(deltaY) <
       Math.abs(deltaX) * DIRECTION_RATIO
     ) {
-      resetSwipe();
       return;
     }
 
-    if (!overlay.classList.contains('is-open')) {
-      resetSwipe();
-      return;
-    }
-
-    // السحب لأعلى: الفيديو التالي
-    // السحب لأسفل: الفيديو السابق
-    const nextIndex =
-      zamzokCurrentIndex + (deltaY < 0 ? 1 : -1);
-
-    // لن يتجاوز أول فيديو أو آخر فيديو
-    showZamzokReel(nextIndex);
-
-    resetSwipe();
+    // Swipe up = next; swipe down = previous.
+    showZamzokReel(
+      zamzokCurrentIndex + (deltaY < 0 ? 1 : -1)
+    );
   });
 
-  // إلغاء السحب عند انقطاع حركة المؤشر
-  layer.addEventListener(
-    'pointercancel',
-    resetSwipe
-  );
-
-  layer.addEventListener(
-    'lostpointercapture',
-    resetSwipe
-  );
+  layer.addEventListener('pointercancel', resetSwipe);
+  layer.addEventListener('lostpointercapture', resetSwipe);
 }
 
 // ==================================================
-// 11. OPEN REELS
+// 12. PLAY / PAUSE CONTROL
+// ==================================================
+
+function toggleZamzokVideoPlayback() {
+  if (
+    !zamzokYTPlayer ||
+    !zamzokPlayerReady ||
+    zamzokPlayerTapBusy
+  ) {
+    return;
+  }
+
+  zamzokPlayerTapBusy = true;
+
+  try {
+    const state = zamzokYTPlayer.getPlayerState();
+
+    if (state === YT.PlayerState.PLAYING) {
+      zamzokYTPlayer.pauseVideo();
+      showZamzokPlaybackIndicator('▶');
+
+    } else if (
+      state === YT.PlayerState.PAUSED ||
+      state === YT.PlayerState.CUED ||
+      state === YT.PlayerState.UNSTARTED
+    ) {
+      zamzokYTPlayer.playVideo();
+      showZamzokPlaybackIndicator('Ⅱ');
+
+    } else if (state === YT.PlayerState.ENDED) {
+      zamzokYTPlayer.seekTo(0, true);
+      zamzokYTPlayer.playVideo();
+      showZamzokPlaybackIndicator('Ⅱ');
+    }
+
+  } catch (error) {
+    console.error('ZAMZOK playback error:', error);
+
+  } finally {
+    window.setTimeout(() => {
+      zamzokPlayerTapBusy = false;
+    }, 250);
+  }
+}
+
+function showZamzokPlaybackIndicator(symbol) {
+  if (!zamzokReelsOverlay) return;
+
+  const indicator = getElement(
+    '.zamzok-reels-play-indicator',
+    zamzokReelsOverlay
+  );
+
+  if (!indicator) return;
+
+  indicator.textContent = symbol;
+  indicator.classList.add('is-visible');
+
+  clearTimeout(indicator._hideTimer);
+
+  indicator._hideTimer = window.setTimeout(() => {
+    indicator.classList.remove('is-visible');
+  }, 550);
+}
+
+// ==================================================
+// 13. OPEN REELS
 // ==================================================
 
 function openZamzokReels(index) {
@@ -1085,10 +1241,10 @@ function openZamzokReels(index) {
 }
 
 // ==================================================
-// 12. SHOW REEL
+// 14. SHOW REEL
 // ==================================================
 
-function showZamzokReel(index) {
+async function showZamzokReel(index) {
   if (
     !zamzokReelsOverlay ||
     !zamzokReels.length ||
@@ -1097,6 +1253,8 @@ function showZamzokReel(index) {
   ) {
     return;
   }
+
+  const requestId = ++zamzokPlayerRequest;
 
   zamzokCurrentIndex = index;
 
@@ -1107,23 +1265,24 @@ function showZamzokReel(index) {
     zamzokReelsOverlay
   );
 
+  if (zamzokYTPlayer) {
+    try {
+      zamzokYTPlayer.destroy();
+    } catch (_) {}
+
+    zamzokYTPlayer = null;
+  }
+
+  zamzokPlayerReady = false;
+  zamzokPlayerTapBusy = false;
+
   container.replaceChildren();
 
-  const iframe = document.createElement('iframe');
+  const playerElement = document.createElement('div');
 
-  iframe.src =
-    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(reel.id)}?autoplay=1&playsinline=1&rel=0`;
+  playerElement.id = 'zamzokYouTubePlayer';
 
-  iframe.title = reel.title;
-
-  iframe.allow =
-    'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen';
-
-  iframe.setAttribute('allowfullscreen', '');
-  iframe.setAttribute('playsinline', '');
-  iframe.setAttribute('loading', 'eager');
-
-  container.appendChild(iframe);
+  container.appendChild(playerElement);
 
   getElement(
     '.zamzok-reels-title',
@@ -1133,8 +1292,7 @@ function showZamzokReel(index) {
   getElement(
     '.zamzok-reels-counter',
     zamzokReelsOverlay
-  ).textContent =
-    `${index + 1} / ${zamzokReels.length}`;
+  ).textContent = `${index + 1} / ${zamzokReels.length}`;
 
   getElement(
     '.zamzok-reels-prev',
@@ -1144,18 +1302,116 @@ function showZamzokReel(index) {
   getElement(
     '.zamzok-reels-next',
     zamzokReelsOverlay
-  ).disabled =
-    index === zamzokReels.length - 1;
+  ).disabled = index === zamzokReels.length - 1;
+
+  try {
+    await loadZamzokYouTubeAPI();
+
+    if (
+      requestId !== zamzokPlayerRequest ||
+      !zamzokReelsOverlay.classList.contains('is-open')
+    ) {
+      return;
+    }
+
+    zamzokYTPlayer = new YT.Player(
+      playerElement.id,
+      {
+        width: '100%',
+        height: '100%',
+
+        videoId: reel.id,
+
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          controls: 0,
+          rel: 0,
+          enablejsapi: 1,
+          origin: window.location.origin
+        },
+
+        events: {
+          onReady: event => {
+            if (
+              requestId !== zamzokPlayerRequest ||
+              !zamzokReelsOverlay?.classList.contains('is-open')
+            ) {
+              try {
+                event.target.destroy();
+              } catch (_) {}
+
+              return;
+            }
+
+            zamzokPlayerReady = true;
+
+            // Autoplay may be blocked by the browser.
+            // The user can tap the video to start playback.
+            try {
+              event.target.playVideo();
+            } catch (error) {
+              console.warn(
+                'YouTube autoplay was blocked:',
+                error
+              );
+            }
+          },
+
+          onStateChange: event => {
+            if (requestId !== zamzokPlayerRequest) {
+              return;
+            }
+
+            if (
+              event.data === YT.PlayerState.PLAYING ||
+              event.data === YT.PlayerState.PAUSED ||
+              event.data === YT.PlayerState.ENDED
+            ) {
+              zamzokPlayerTapBusy = false;
+            }
+          },
+
+          onError: event => {
+            console.error(
+              'ZAMZOK YouTube player error:',
+              event.data
+            );
+          }
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error(
+      'Unable to initialize YouTube player:',
+      error
+    );
+  }
 }
 
 // ==================================================
-// 13. CLOSE REELS
+// 15. CLOSE REELS
 // ==================================================
 
 function closeZamzokReels(fromHistory = false) {
   if (!zamzokReelsOverlay) return;
 
   zamzokReelsOverlay.classList.remove('is-open');
+
+  // Invalidate any pending player creation.
+  zamzokPlayerRequest++;
+
+  if (zamzokYTPlayer) {
+    try {
+      zamzokYTPlayer.destroy();
+    } catch (_) {}
+
+    zamzokYTPlayer = null;
+  }
+
+  zamzokPlayerReady = false;
+  zamzokPlayerTapBusy = false;
 
   const container = getElement(
     '.zamzok-reels-video',
@@ -1193,13 +1449,14 @@ window.addEventListener('popstate', () => {
     zamzokReelsOverlay?.classList.contains('is-open')
   ) {
     closeZamzokReels(true);
+
   } else {
     zamzokHistoryActive = false;
   }
 });
 
 // ==================================================
-// 14. FULLSCREEN
+// 16. FULLSCREEN
 // ==================================================
 
 async function toggleZamzokFullscreen() {
@@ -1229,7 +1486,7 @@ async function toggleZamzokFullscreen() {
 }
 
 // ==================================================
-// 15. YOUTUBE BUTTONS
+// 17. YOUTUBE ACTION BUTTONS
 // ==================================================
 
 function openZamzokOnYouTube() {
@@ -1281,7 +1538,7 @@ async function shareZamzokReel() {
 }
 
 // ==================================================
-// 16. KEYBOARD NAVIGATION
+// 18. KEYBOARD NAVIGATION
 // ==================================================
 
 function handleZamzokReelsKeyboard(event) {
@@ -1311,7 +1568,7 @@ function handleZamzokReelsKeyboard(event) {
 }
 
 // ==================================================
-// 17. VIDEO CARD CLICK HANDLER
+// 19. VIDEO CARD CLICK HANDLER
 // ==================================================
 
 document.addEventListener('click', event => {
@@ -1335,7 +1592,7 @@ document.addEventListener('click', event => {
 });
 
 // ==================================================
-// 18. INITIALIZE WEBSITE
+// 20. INITIALIZE WEBSITE
 // ==================================================
 
 function initializeZamzok() {
